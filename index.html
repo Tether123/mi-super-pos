@@ -138,6 +138,15 @@
       <span>Productos en inventario (<span id="inv-count">0</span>)</span>
       <button class="small-text" onclick="restoreDefaults()">Restaurar datos de fábrica</button>
     </div>
+
+    <div style="margin-top: 10px; display: flex; gap: 10px;">
+  <button onclick="exportToCSV()">Descargar copia (CSV)</button>
+  <label class="button" style="cursor:pointer; padding: 10px; border: 1px solid #ccc; border-radius: 8px;">
+    Subir desde PC (CSV)
+    <input type="file" accept=".csv" onchange="importFromCSV(event)" style="display:none;">
+  </label>
+</div>
+    
     <div id="inventory-table-container"></div>
   </div>
 
@@ -378,6 +387,56 @@ function deleteProduct(index) {
       renderInventory();
       renderSampleCodes();
   }
+}
+
+// 1. Función para DESCARGAR el inventario a un archivo CSV
+function exportToCSV() {
+    let csvContent = "data:text/csv;charset=utf-8,Codigo,Nombre,Precio,Categoria\n";
+    
+    inventory.forEach(p => {
+        csvContent += `${p.code},${p.name},${p.price},${p.cat}\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "inventario_supermercado.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// 2. Función para LEER un archivo CSV desde el disco duro
+function importFromCSV(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const content = e.target.result;
+        const rows = content.split("\n").slice(1); // Omitir cabecera
+        
+        let newInventory = [];
+        rows.forEach(row => {
+            const cols = row.split(",");
+            if (cols.length >= 3) {
+                newInventory.push({
+                    code: cols[0].trim(),
+                    name: cols[1].trim(),
+                    price: parseFloat(cols[2]),
+                    cat: cols[3]?.trim() || 'other'
+                });
+            }
+        });
+
+        if (confirm(`¿Cargar ${newInventory.length} productos? Esto reemplazará tu inventario actual.`)) {
+            inventory = newInventory;
+            saveInventory();
+            renderInventory();
+            alert("Inventario actualizado con éxito");
+        }
+    };
+    reader.readAsText(file);
 }
 
 // --- AGREGAR PRODUCTO ---

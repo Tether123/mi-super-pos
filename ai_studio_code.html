@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Caja y Inventario — Persistente</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f5f5f3; color: #1a1a18; min-height: 100vh; padding: 2rem 1rem; }
+    .app { max-width: 800px; margin: 0 auto; background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,0.08); padding: 1.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+    h1 { font-size: 20px; font-weight: 600; margin-bottom: 1.5rem; }
+    
+    .tabs { display: flex; gap: 4px; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(0,0,0,0.08); }
+    .tab { padding: 10px 18px; font-size: 14px; cursor: pointer; border: none; background: none; color: #666; border-bottom: 2px solid transparent; transition: all 0.15s; }
+    .tab.active { color: #1a1a18; border-bottom: 2px solid #1a1a18; font-weight: 600; }
+    .panel { display: none; } .panel.active { display: block; }
+    
+    /* CAJA (POS) */
+    .pos-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 600px) { .pos-grid { grid-template-columns: 1fr; } }
+    
+    .price-screen { background: #f5f5f3; border-radius: 12px; padding: 1.5rem; text-align: center; margin-bottom: 1rem; border: 1px solid rgba(0,0,0,0.08); transition: background 0.2s; }
+    .price-screen.idle { opacity: 0.7; }
+    .price-screen.error { background: #fcebeb; border-color: #f5c6c6; }
+    .price-screen.success { background: #eaf3de; border-color: #cde4b4; }
+    .product-name { font-size: 15px; color: #555; margin-bottom: 4px; font-weight: 500; }
+    .price-value { font-size: 38px; font-weight: 600; color: #1a1a18; letter-spacing: -1px; }
+    .price-currency { font-size: 20px; vertical-align: top; margin-top: 8px; display: inline-block; }
+    
+    .search-row { display: flex; gap: 8px; margin-bottom: 1rem; }
+    .search-row input { flex: 1; font-size: 16px; padding: 10px 14px; border: 1px solid rgba(0,0,0,0.15); border-radius: 8px; font-family: monospace; letter-spacing: 1px; outline: none; }
+    .search-row input:focus { border-color: rgba(0,0,0,0.35); box-shadow: 0 0 0 3px rgba(0,0,0,0.06); }
+    
+    button { padding: 10px 16px; font-size: 14px; font-weight: 500; border: 1px solid rgba(0,0,0,0.2); border-radius: 8px; background: #fff; cursor: pointer; transition: all 0.15s; }
+    button:hover { background: #f5f5f3; }
+    button:active { transform: scale(0.98); }
+    button.primary { background: #1a1a18; color: #fff; border-color: #1a1a18; }
+    button.primary:hover { background: #333; }
+    button.danger { color: #a32d2d; border-color: #fcebeb; background: #fcf5f5; }
+    button.danger:hover { background: #fcebeb; }
+    button.small-text { padding: 4px 8px; font-size: 11px; color: #666; border: none; background: none; text-decoration: underline; }
+    button.small-text:hover { color: #1a1a18; background: none; }
+
+    /* TICKET DE COMPRA */
+    .ticket-container { border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; }
+    .ticket-header { background: #f9f9f9; padding: 10px 15px; font-weight: 600; font-size: 14px; border-bottom: 1px solid rgba(0,0,0,0.1); text-align: center; }
+    .ticket-body { padding: 10px; flex: 1; min-height: 200px; max-height: 300px; overflow-y: auto; }
+    .ticket-item { display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; border-bottom: 1px dashed rgba(0,0,0,0.1); }
+    .ticket-item:last-child { border-bottom: none; }
+    .item-qty { font-weight: 600; width: 25px; display: inline-block; }
+    .item-details { flex: 1; }
+    .item-promo-note { font-size: 11px; color: #3B6D11; display: block; margin-top: 2px; }
+    .item-total { font-weight: 600; }
+    .ticket-footer { background: #1a1a18; color: #fff; padding: 15px; text-align: right; }
+    .ticket-total-label { font-size: 14px; opacity: 0.8; }
+    .ticket-total-value { font-size: 24px; font-weight: 600; margin-left: 10px; }
+    .ticket-actions { display: flex; gap: 8px; padding: 10px; background: #f9f9f9; border-top: 1px solid rgba(0,0,0,0.1); }
+    .ticket-actions button { flex: 1; }
+
+    /* TABLAS E INVENTARIO */
+    .section-title { font-size: 12px; font-weight: 600; color: #888; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { text-align: left; font-size: 12px; font-weight: 600; color: #888; padding: 8px 10px; border-bottom: 1px solid rgba(0,0,0,0.08); }
+    td { padding: 10px; border-bottom: 1px solid rgba(0,0,0,0.06); color: #1a1a18; }
+    td.code { font-family: monospace; font-size: 13px; color: #666; }
+    td.price-col { font-weight: 500; text-align: right; }
+    .promo-badge { background: #fff3cd; color: #856404; font-size: 11px; padding: 2px 6px; border-radius: 4px; border: 1px solid #ffeeba; display: inline-block; margin-top: 4px;}
+
+    /* FORMULARIOS */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem; }
+    .form-field { display: flex; flex-direction: column; gap: 4px; }
+    .form-field label { font-size: 12px; color: #666; font-weight: 500; }
+    .form-field input, .form-field select { width: 100%; padding: 8px 12px; border: 1px solid rgba(0,0,0,0.15); border-radius: 8px; font-size: 14px; outline: none; }
+    .form-field input:focus, .form-field select:focus { border-color: rgba(0,0,0,0.35); }
+    
+    .promo-box { background: #fafafa; border: 1px dashed rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; margin-bottom: 1rem; }
+    .promo-box h4 { font-size: 13px; margin-bottom: 8px; color: #555; }
+
+    .sample-codes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+    .sample-codes button { font-family: monospace; font-size: 12px; padding: 4px 10px; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <h1>Supermercado POS</h1>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('scanner')">Caja (Escáner)</button>
+    <button class="tab" onclick="showTab('inventory')">Inventario</button>
+    <button class="tab" onclick="showTab('add')">Agregar producto</button>
+  </div>
+
+  <!-- CAJA (ESCÁNER) -->
+  <div class="panel active" id="panel-scanner">
+    <div class="pos-grid">
+      
+      <!-- Lado Izquierdo: Escáner -->
+      <div class="scanner-section">
+        <div class="price-screen idle" id="price-display">
+          <div class="product-name" id="display-name">Escanea un código para empezar</div>
+          <div class="price-value" id="display-price">—</div>
+        </div>
+        
+        <div class="search-row">
+          <input type="text" id="barcode-input" placeholder="Código de barras..." maxlength="20"
+            onkeydown="if(event.key==='Enter') searchBarcode()" autofocus />
+          <button class="primary" onclick="searchBarcode()">Añadir</button>
+        </div>
+        <p style="font-size: 12px; color: #999; margin-bottom: 1.5rem;">Presiona Enter para escanear/buscar el código.</p>
+        
+        <p class="section-title">Códigos de prueba rápidos</p>
+        <div class="sample-codes" id="sample-codes-container"></div>
+      </div>
+
+      <!-- Lado Derecho: Ticket -->
+      <div class="ticket-container">
+        <div class="ticket-header">Ticket de Compra</div>
+        <div class="ticket-body" id="ticket-body">
+          <div style="text-align: center; color: #999; font-size: 13px; margin-top: 2rem;">El carrito está vacío</div>
+        </div>
+        <div class="ticket-footer">
+          <span class="ticket-total-label">TOTAL</span>
+          <span class="ticket-total-value" id="ticket-total">€0.00</span>
+        </div>
+        <div class="ticket-actions">
+          <button class="danger" onclick="clearCart()">Vaciar</button>
+          <button class="primary" onclick="checkout()">Cobrar</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- INVENTARIO -->
+  <div class="panel" id="panel-inventory">
+    <div class="section-title">
+      <span>Productos en inventario (<span id="inv-count">0</span>)</span>
+      <button class="small-text" onclick="restoreDefaults()">Restaurar datos de fábrica</button>
+    </div>
+    <div id="inventory-table-container"></div>
+  </div>
+
+  <!-- AGREGAR PRODUCTO -->
+  <div class="panel" id="panel-add">
+    <p class="section-title">Nuevo producto</p>
+    <div class="form-grid">
+      <div class="form-field">
+        <label>Código de barras *</label>
+        <input type="text" id="new-code" placeholder="ej. 7501234567890" style="font-family:monospace;" />
+      </div>
+      <div class="form-field">
+        <label>Nombre del producto *</label>
+        <input type="text" id="new-name" placeholder="ej. Leche entera 1L" />
+      </div>
+      <div class="form-field">
+        <label>Precio unitario (€) *</label>
+        <input type="number" id="new-price" placeholder="0.00" step="0.01" min="0" />
+      </div>
+      <div class="form-field">
+        <label>Categoría</label>
+        <select id="new-cat">
+          <option value="food">Alimento</option>
+          <option value="drink">Bebida</option>
+          <option value="snack">Snack</option>
+          <option value="clean">Limpieza</option>
+          <option value="other">Otro</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Sección de Promoción Opcional -->
+    <div class="promo-box">
+      <h4>Oferta por volumen (Opcional)</h4>
+      <div class="form-grid" style="margin-bottom: 0;">
+        <div class="form-field">
+          <label>Cantidad mínima</label>
+          <input type="number" id="new-promo-qty" placeholder="Ej: 3 (Lleva 3...)" min="2" />
+        </div>
+        <div class="form-field">
+          <label>Precio total oferta (€)</label>
+          <input type="number" id="new-promo-price" placeholder="Ej: 2.00 (...por 2€)" step="0.01" min="0" />
+        </div>
+      </div>
+    </div>
+
+    <button class="primary" style="width: 100%;" onclick="addProduct()">Agregar al inventario</button>
+    <div id="add-msg" style="text-align: center; margin-top: 10px; font-size: 14px;"></div>
+  </div>
+</div>
+
+<script>
+// --- DATOS INICIALES (POR DEFECTO) ---
+const DEFAULT_INVENTORY = [
+  { code: '8410188070031', name: 'Leche entera 1L',          price: 0.99, cat: 'drink', promo: { qty: 6, price: 5.00 } },
+  { code: '8410188030035', name: 'Pan de molde 500g',        price: 1.35, cat: 'food' },
+  { code: '8411100013308', name: 'Aceite de oliva 750ml',    price: 4.59, cat: 'food' },
+  { code: '8480000129062', name: 'Agua mineral 1.5L',        price: 0.40, cat: 'drink', promo: { qty: 3, price: 1.00 } },
+  { code: '8718114990025', name: 'Detergente líquido',       price: 3.20, cat: 'clean' },
+  { code: '8411200001143', name: 'Patatas fritas 150g',      price: 1.75, cat: 'snack', promo: { qty: 2, price: 3.00 } }
+];
+
+// --- SISTEMA DE GUARDADO (LOCALSTORAGE) ---
+// Intenta cargar datos guardados; si no hay, usa el por defecto.
+let savedData = localStorage.getItem('mi_supermercado_inventario');
+let inventory = savedData ? JSON.parse(savedData) : JSON.parse(JSON.stringify(DEFAULT_INVENTORY));
+
+function saveInventory() {
+    // Guarda el inventario en la memoria del navegador
+    localStorage.setItem('mi_supermercado_inventario', JSON.stringify(inventory));
+}
+
+function restoreDefaults() {
+    if(confirm('¿Estás seguro de querer borrar tus productos y volver a los de fábrica?')) {
+        inventory = JSON.parse(JSON.stringify(DEFAULT_INVENTORY));
+        saveInventory();
+        renderInventory();
+        renderSampleCodes();
+    }
+}
+
+// Carrito de compras (Ticket)
+let cart = {}; 
+
+// --- NAVEGACIÓN ---
+function showTab(name) {
+  const names = ['scanner', 'inventory', 'add'];
+  document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', names[i] === name));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  if (name === 'inventory') renderInventory();
+  if (name === 'scanner') {
+      renderSampleCodes();
+      document.getElementById('barcode-input').focus();
+  }
+}
+
+// --- LÓGICA DE CAJA (ESCÁNER Y TICKET) ---
+function searchBarcode() {
+  const input = document.getElementById('barcode-input');
+  const code = input.value.trim();
+  const disp = document.getElementById('price-display');
+
+  if (!code) return;
+
+  const product = inventory.find(p => p.code === code);
+  disp.className = 'price-screen'; // Reset classes
+
+  if (product) {
+    document.getElementById('display-name').textContent = product.name;
+    document.getElementById('display-price').innerHTML = '<span class="price-currency">€</span>' + product.price.toFixed(2);
+    disp.classList.add('success');
+    addToCart(product);
+  } else {
+    document.getElementById('display-name').textContent = 'Código no encontrado';
+    document.getElementById('display-price').textContent = 'Error';
+    disp.classList.add('error');
+  }
+
+  input.value = '';
+  input.focus();
+}
+
+function addToCart(product) {
+    if (cart[product.code]) {
+        cart[product.code].qty += 1;
+    } else {
+        cart[product.code] = { product: product, qty: 1 };
+    }
+    updateTicketUI();
+}
+
+function updateTicketUI() {
+    const tbody = document.getElementById('ticket-body');
+    let grandTotal = 0;
+    
+    const cartKeys = Object.keys(cart);
+    
+    if (cartKeys.length === 0) {
+        tbody.innerHTML = '<div style="text-align: center; color: #999; font-size: 13px; margin-top: 2rem;">El carrito está vacío</div>';
+        document.getElementById('ticket-total').textContent = '€0.00';
+        return;
+    }
+
+    let html = '';
+
+    cartKeys.forEach(code => {
+        const item = cart[code];
+        const p = item.product;
+        const q = item.qty;
+        
+        let subtotal = 0;
+        let promoText = '';
+
+        if (p.promo && q >= p.promo.qty) {
+            const promoPacks = Math.floor(q / p.promo.qty);
+            const remainder = q % p.promo.qty;
+            
+            subtotal = (promoPacks * p.promo.price) + (remainder * p.price);
+            const normalPrice = q * p.price;
+            const savings = normalPrice - subtotal;
+            promoText = `<span class="item-promo-note">Oferta (${p.promo.qty}x€${p.promo.price.toFixed(2)}) - Ahorras: €${savings.toFixed(2)}</span>`;
+        } else {
+            subtotal = q * p.price;
+        }
+
+        grandTotal += subtotal;
+
+        html += `
+        <div class="ticket-item">
+            <div class="item-details">
+                <span class="item-qty">${q}x</span> ${p.name}
+                ${promoText}
+            </div>
+            <div class="item-total">€${subtotal.toFixed(2)}</div>
+        </div>`;
+    });
+
+    tbody.innerHTML = html;
+    document.getElementById('ticket-total').textContent = '€' + grandTotal.toFixed(2);
+    tbody.scrollTop = tbody.scrollHeight;
+}
+
+function clearCart() {
+    cart = {};
+    updateTicketUI();
+    const disp = document.getElementById('price-display');
+    disp.className = 'price-screen idle';
+    document.getElementById('display-name').textContent = 'Escanea un código para empezar';
+    document.getElementById('display-price').textContent = '—';
+    document.getElementById('barcode-input').focus();
+}
+
+function checkout() {
+    if (Object.keys(cart).length === 0) {
+        alert("El carrito está vacío.");
+        return;
+    }
+    const total = document.getElementById('ticket-total').textContent;
+    alert(`¡Cobro realizado con éxito!\nTotal cobrado: ${total}`);
+    clearCart();
+}
+
+// --- INVENTARIO ---
+function renderInventory() {
+  const container = document.getElementById('inventory-table-container');
+  document.getElementById('inv-count').textContent = inventory.length;
+
+  if (inventory.length === 0) {
+    container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #999;">No hay productos.</div>';
+    return;
+  }
+
+  let html = `<table><thead><tr>
+    <th>Código</th><th>Producto</th><th>Precio</th><th>Oferta</th><th></th>
+  </tr></thead><tbody>`;
+
+  inventory.forEach((p, i) => {
+    let promoHTML = p.promo ? `<div class="promo-badge">${p.promo.qty} por €${p.promo.price.toFixed(2)}</div>` : '-';
+    
+    html += `<tr>
+      <td class="code">${p.code}</td>
+      <td>${p.name}</td>
+      <td class="price-col">€${p.price.toFixed(2)}</td>
+      <td>${promoHTML}</td>
+      <td style="text-align:right;"><button class="danger" style="padding: 4px 8px;" onclick="deleteProduct(${i})">✕</button></td>
+    </tr>`;
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
+
+function deleteProduct(index) {
+  if(confirm('¿Eliminar este producto del inventario?')) {
+      inventory.splice(index, 1);
+      saveInventory(); // <-- GUARDA CAMBIOS
+      renderInventory();
+      renderSampleCodes();
+  }
+}
+
+// --- AGREGAR PRODUCTO ---
+function addProduct() {
+  const code  = document.getElementById('new-code').value.trim();
+  const name  = document.getElementById('new-name').value.trim();
+  const price = parseFloat(document.getElementById('new-price').value);
+  const cat   = document.getElementById('new-cat').value;
+  
+  const promoQty = parseInt(document.getElementById('new-promo-qty').value);
+  const promoPrice = parseFloat(document.getElementById('new-promo-price').value);
+  
+  const msg   = document.getElementById('add-msg');
+
+  if (!code || !name || isNaN(price) || price < 0) {
+    msg.innerHTML = '<span style="color:#a32d2d;">Rellena el código, nombre y precio.</span>';
+    return;
+  }
+  if (inventory.find(p => p.code === code)) {
+    msg.innerHTML = '<span style="color:#a32d2d;">Ese código ya existe.</span>';
+    return;
+  }
+
+  let newProduct = { code, name, price, cat };
+  
+  if (!isNaN(promoQty) && promoQty > 1 && !isNaN(promoPrice) && promoPrice > 0) {
+      newProduct.promo = { qty: promoQty, price: promoPrice };
+  }
+
+  inventory.push(newProduct);
+  saveInventory(); // <-- GUARDA CAMBIOS
+
+  msg.innerHTML = '<span style="color:#3B6D11;">¡Producto agregado! (Quedará guardado al recargar)</span>';
+  
+  document.getElementById('new-code').value  = '';
+  document.getElementById('new-name').value  = '';
+  document.getElementById('new-price').value = '';
+  document.getElementById('new-promo-qty').value = '';
+  document.getElementById('new-promo-price').value = '';
+  
+  setTimeout(() => msg.innerHTML = '', 3500);
+  renderSampleCodes();
+}
+
+// --- BOTONES RÁPIDOS DE PRUEBA ---
+function renderSampleCodes() {
+  const container = document.getElementById('sample-codes-container');
+  if (!container) return;
+  container.innerHTML = '';
+  inventory.slice(0, 6).forEach(p => {
+    const btn = document.createElement('button');
+    btn.textContent = p.name + (p.promo ? ' 🎁' : '');
+    btn.title = `Código: ${p.code}`;
+    btn.onclick = () => {
+      document.getElementById('barcode-input').value = p.code;
+      searchBarcode();
+    };
+    container.appendChild(btn);
+  });
+}
+
+// Iniciar app
+renderSampleCodes();
+updateTicketUI();
+
+// Registro del Service Worker para convertirlo en PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js')
+      .then(reg => console.log('PWA lista y registrada'))
+      .catch(err => console.log('Error al registrar PWA', err));
+  });
+}
+
+</script>
+</body>
+</html>

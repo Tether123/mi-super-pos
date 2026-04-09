@@ -1,5 +1,7 @@
-<!DOCTYPE html>
+<<!DOCTYPE html>
+
 <html lang="es">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -82,6 +84,7 @@
   </style>
 </head>
 <body>
+  
 <div class="app">
   <h1>Supermercado POS</h1>
 
@@ -103,11 +106,11 @@
         </div>
         
         <div class="search-row">
-          <input type="text" id="barcode-input" placeholder="Código de barras..." maxlength="20"
+          <input type="text" id="barcode-input" placeholder="Código de barras o '1.'..." maxlength="20"
             onkeydown="if(event.key==='Enter') searchBarcode()" autofocus />
           <button class="primary" onclick="searchBarcode()">Añadir</button>
         </div>
-        <p style="font-size: 12px; color: #999; margin-bottom: 1.5rem;">Presiona Enter para escanear/buscar el código.</p>
+        <p style="font-size: 12px; color: #999; margin-bottom: 1.5rem;">Presiona Enter para escanear. <b>Truco:</b> Si escribes un precio con punto (Ej: <code>1.</code> o <code>2.50</code>), se añadirá como cobro manual.</p>
         
         <p class="section-title">Códigos de prueba rápidos</p>
         <div class="sample-codes" id="sample-codes-container"></div>
@@ -139,13 +142,13 @@
       <button class="small-text" onclick="restoreDefaults()">Restaurar datos de fábrica</button>
     </div>
 
-    <div style="margin-top: 10px; display: flex; gap: 10px;">
-  <button onclick="exportToCSV()">Descargar copia (CSV)</button>
-  <label class="button" style="cursor:pointer; padding: 10px; border: 1px solid #ccc; border-radius: 8px;">
-    Subir desde PC (CSV)
-    <input type="file" accept=".csv" onchange="importFromCSV(event)" style="display:none;">
-  </label>
-</div>
+    <div style="margin-top: 10px; margin-bottom: 15px; display: flex; gap: 10px;">
+      <button onclick="exportToCSV()">Descargar copia (CSV)</button>
+      <label class="button" style="cursor:pointer; padding: 10px; border: 1px solid #ccc; border-radius: 8px;">
+        Subir desde PC (CSV)
+        <input type="file" accept=".csv" onchange="importFromCSV(event)" style="display:none;">
+      </label>
+    </div>
     
     <div id="inventory-table-container"></div>
   </div>
@@ -210,12 +213,10 @@ const DEFAULT_INVENTORY = [
 ];
 
 // --- SISTEMA DE GUARDADO (LOCALSTORAGE) ---
-// Intenta cargar datos guardados; si no hay, usa el por defecto.
 let savedData = localStorage.getItem('mi_supermercado_inventario');
 let inventory = savedData ? JSON.parse(savedData) : JSON.parse(JSON.stringify(DEFAULT_INVENTORY));
 
 function saveInventory() {
-    // Guarda el inventario en la memoria del navegador
     localStorage.setItem('mi_supermercado_inventario', JSON.stringify(inventory));
 }
 
@@ -252,8 +253,36 @@ function searchBarcode() {
 
   if (!code) return;
 
+  disp.className = 'price-screen'; // Limpiar clases (colores) previas
+
+  // NUEVA FUNCIÓN: Detección de cobro manual usando el punto (.)
+  // Verifica si el texto contiene un punto y además es un número válido.
+  if (code.includes('.') && !isNaN(parseFloat(code))) {
+      const manualPrice = parseFloat(code);
+      if (manualPrice >= 0) {
+          // Crear un artículo temporal manual
+          const manualCode = 'MANUAL_' + manualPrice.toFixed(2);
+          const manualProduct = { 
+              code: manualCode, 
+              name: 'Artículo manual', 
+              price: manualPrice, 
+              cat: 'other' 
+          };
+          
+          document.getElementById('display-name').textContent = manualProduct.name;
+          document.getElementById('display-price').innerHTML = '<span class="price-currency">€</span>' + manualPrice.toFixed(2);
+          disp.classList.add('success');
+          
+          addToCart(manualProduct);
+          
+          input.value = '';
+          input.focus();
+          return;
+      }
+  }
+
+  // Si no es un cobro manual, busca el producto por código de barras
   const product = inventory.find(p => p.code === code);
-  disp.className = 'price-screen'; // Reset classes
 
   if (product) {
     document.getElementById('display-name').textContent = product.name;
@@ -278,6 +307,7 @@ function addToCart(product) {
     }
     updateTicketUI();
 }
+
 
 function updateTicketUI() {
     const tbody = document.getElementById('ticket-body');
@@ -383,18 +413,24 @@ function renderInventory() {
 function deleteProduct(index) {
   if(confirm('¿Eliminar este producto del inventario?')) {
       inventory.splice(index, 1);
-      saveInventory(); // <-- GUARDA CAMBIOS
+      saveInventory(); 
       renderInventory();
       renderSampleCodes();
   }
 }
 
-// 1. Función para DESCARGAR el inventario a un archivo CSV
+// 1. MODIFICADO: Función para DESCARGAR incluyendo las promociones
 function exportToCSV() {
-    let csvContent = "data:text/csv;charset=utf-8,Codigo,Nombre,Precio,Categoria\n";
+    // Hemos añadido "PromoCantidad" y "PromoPrecio" a las columnas
+    let csvContent = "data:text/csv;charset=utf-8,Codigo,Nombre,Precio,Categoria,PromoCantidad,PromoPrecio\n";
     
     inventory.forEach(p => {
-        csvContent += `${p.code},${p.name},${p.price},${p.cat}\n`;
+        // Quitamos posibles comas de los nombres para que no rompa el formato CSV
+        const safeName = p.name.replace(/,/g, ' '); 
+        const pQty = p.promo ? p.promo.qty : '';
+        const pPrice = p.promo ? p.promo.price : '';
+        
+        csvContent += `${p.code},${safeName},${p.price},${p.cat},${pQty},${pPrice}\n`;
     });
 
     const encodedUri = encodeURI(csvContent);
@@ -406,7 +442,7 @@ function exportToCSV() {
     document.body.removeChild(link);
 }
 
-// 2. Función para LEER un archivo CSV desde el disco duro
+// 2. MODIFICADO: Función para LEER el CSV recuperando promociones
 function importFromCSV(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -414,18 +450,32 @@ function importFromCSV(event) {
     const reader = new FileReader();
     reader.onload = function(e) {
         const content = e.target.result;
-        const rows = content.split("\n").slice(1); // Omitir cabecera
+        const rows = content.split("\n").slice(1); // Omitir la primera línea (cabecera)
         
         let newInventory = [];
         rows.forEach(row => {
+            if (!row.trim()) return; // Ignorar líneas en blanco
+            
             const cols = row.split(",");
             if (cols.length >= 3) {
-                newInventory.push({
+                let item = {
                     code: cols[0].trim(),
                     name: cols[1].trim(),
                     price: parseFloat(cols[2]),
-                    cat: cols[3]?.trim() || 'other'
-                });
+                    cat: cols[3] ? cols[3].trim() : 'other'
+                };
+                
+                // Si el CSV trae columnas 4 y 5, las lee para rearmar la promoción
+                if (cols[4] && cols[5]) {
+                    const promoQty = parseInt(cols[4]);
+                    const promoPrice = parseFloat(cols[5]);
+                    
+                    if (!isNaN(promoQty) && !isNaN(promoPrice)) {
+                        item.promo = { qty: promoQty, price: promoPrice };
+                    }
+                }
+
+                newInventory.push(item);
             }
         });
 
@@ -433,7 +483,13 @@ function importFromCSV(event) {
             inventory = newInventory;
             saveInventory();
             renderInventory();
-            alert("Inventario actualizado con éxito");
+            alert("Inventario y promociones cargados con éxito");
+            
+            // Refrescar los botones de prueba
+            renderSampleCodes();
+            
+            // Limpiar el input para permitir volver a subir el mismo archivo después
+            event.target.value = '';
         }
     };
     reader.readAsText(file);
@@ -467,7 +523,7 @@ function addProduct() {
   }
 
   inventory.push(newProduct);
-  saveInventory(); // <-- GUARDA CAMBIOS
+  saveInventory(); 
 
   msg.innerHTML = '<span style="color:#3B6D11;">¡Producto agregado! (Quedará guardado al recargar)</span>';
   
@@ -498,6 +554,7 @@ function renderSampleCodes() {
   });
 }
 
+
 // Iniciar app
 renderSampleCodes();
 updateTicketUI();
@@ -510,7 +567,6 @@ if ('serviceWorker' in navigator) {
       .catch(err => console.log('Error al registrar PWA', err));
   });
 }
-
 </script>
 </body>
 </html>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Caja y Inventario — Persistente con IVA</title>
+  <title>Caja y Inventario — Persistente PRO</title>
   <link rel="manifest" href="manifest.json">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -47,12 +47,18 @@
     .ticket-container { border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; }
     .ticket-header { background: #f9f9f9; padding: 10px 15px; font-weight: 600; font-size: 14px; border-bottom: 1px solid rgba(0,0,0,0.1); text-align: center; }
     .ticket-body { padding: 10px; flex: 1; min-height: 200px; max-height: 300px; overflow-y: auto; }
-    .ticket-item { display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; border-bottom: 1px dashed rgba(0,0,0,0.1); }
+    .ticket-item { display: flex; justify-content: space-between; align-items: flex-start; font-size: 13px; padding: 8px 0; border-bottom: 1px dashed rgba(0,0,0,0.1); }
     .ticket-item:last-child { border-bottom: none; }
-    .item-qty { font-weight: 600; width: 25px; display: inline-block; }
+    
+    /* Controladores de cantidad en el ticket */
+    .qty-control { display: flex; align-items: center; gap: 6px; margin-right: 8px; }
+    .qty-btn { padding: 2px 6px; font-size: 14px; line-height: 1; border-radius: 4px; border: 1px solid #ccc; background: #f5f5f3; cursor: pointer; color: #333; }
+    .qty-btn:hover { background: #e0e0e0; }
+    .item-qty-text { font-weight: 600; min-width: 14px; text-align: center; }
+    
     .item-details { flex: 1; }
     .item-promo-note { font-size: 11px; color: #3B6D11; display: block; margin-top: 2px; }
-    .item-total { font-weight: 600; }
+    .item-total { font-weight: 600; text-align: right; margin-left: 10px; }
     
     .ticket-footer { background: #1a1a18; color: #fff; padding: 15px; display: flex; flex-direction: column; gap: 4px; }
     .ticket-footer-row { display: flex; justify-content: space-between; font-size: 12px; color: #bbb; }
@@ -71,7 +77,7 @@
     td.code { font-family: monospace; font-size: 13px; color: #666; }
     td.price-col { font-weight: 500; text-align: right; }
     .promo-badge { background: #fff3cd; color: #856404; font-size: 11px; padding: 2px 6px; border-radius: 4px; border: 1px solid #ffeeba; display: inline-block; margin-top: 4px;}
-    .tax-badge { font-size: 11px; color: #888; margin-left: 4px; font-weight: 400; }
+    .tax-badge { font-size: 11px; color: #888; margin-left: 4px; font-weight: 400; background: #eee; padding: 2px 4px; border-radius: 4px;}
 
     /* FORMULARIOS */
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 1rem; }
@@ -136,9 +142,7 @@
             <span>Base Imponible</span>
             <span id="ticket-subtotal">€0.00</span>
           </div>
-          <div id="ticket-taxes-container">
-            <!-- Los desgloses de IVA se inyectan aquí -->
-          </div>
+          <div id="ticket-taxes-container"></div>
           <div class="ticket-total-row">
             <span class="ticket-total-label">TOTAL (IVA inc.)</span>
             <span class="ticket-total-value" id="ticket-total">€0.00</span>
@@ -185,17 +189,13 @@
         <input type="text" id="new-name" placeholder="ej. Leche entera 1L" />
       </div>
       <div class="form-field">
-        <label>Precio unitario final con IVA (€) *</label>
+        <label>Precio unitario con IVA (€) *</label>
         <input type="number" id="new-price" placeholder="0.00" step="0.01" min="0" />
       </div>
       <div class="form-field">
         <label>Categoría</label>
         <select id="new-cat">
-          <option value="food">Alimento</option>
-          <option value="drink">Bebida</option>
-          <option value="snack">Snack</option>
-          <option value="clean">Limpieza</option>
-          <option value="other">Otro</option>
+          <!-- Se rellena por JavaScript -->
         </select>
       </div>
     </div>
@@ -218,44 +218,55 @@
     <div id="add-msg" style="text-align: center; margin-top: 10px; font-size: 14px;"></div>
   </div>
 
-  <!-- CONFIGURACIÓN DE IVA -->
+  <!-- CONFIGURACIÓN DE IVA Y CATEGORÍAS -->
   <div class="panel" id="panel-config">
     <p class="section-title">Impuestos por Categoría (% IVA)</p>
-    <p style="font-size: 13px; color: #666; margin-bottom: 15px;">Define el porcentaje de IVA aplicado a cada tipo de producto. Los precios de tu inventario ya incluyen el IVA, este panel permite desglosarlo correctamente en el ticket.</p>
+    <p style="font-size: 13px; color: #666; margin-bottom: 15px;">Define el IVA de cada categoría. Los precios de tu inventario ya lo incluyen, esto solo es para desglosarlo en el ticket.</p>
     
-    <div class="form-grid" id="tax-config-grid">
-      <!-- Los inputs de IVA se inyectan aquí -->
+    <div class="form-grid" id="tax-config-grid" style="margin-bottom: 15px;">
+      <!-- Inputs de IVA inyectados aquí -->
     </div>
     
-    <button class="primary" onclick="saveTaxConfig()">Guardar Impuestos</button>
-    <div id="config-msg" style="text-align: left; display: inline-block; margin-left: 10px; font-size: 14px;"></div>
+    <button class="primary" onclick="saveTaxConfig()" style="margin-bottom: 2rem;">Guardar Impuestos</button>
+    
+    <p class="section-title" style="border-top: 1px solid #eee; padding-top: 1.5rem;">Crear Nueva Categoría</p>
+    <div class="promo-box" style="display: flex; gap: 10px; align-items: flex-end;">
+      <div class="form-field" style="flex: 2;">
+        <label>Nombre de la categoría</label>
+        <input type="text" id="custom-cat-name" placeholder="Ej: Lácteos, Ferretería...">
+      </div>
+      <div class="form-field" style="flex: 1;">
+        <label>% IVA base</label>
+        <input type="number" id="custom-cat-tax" placeholder="21" value="21" min="0">
+      </div>
+      <button class="primary" onclick="createNewCategory()">Añadir</button>
+    </div>
+    <div id="config-msg" style="text-align: left; font-size: 14px;"></div>
   </div>
 </div>
 
 <script>
-// --- DICCIONARIO DE CATEGORÍAS ---
-const CAT_NAMES = {
-  food: 'Alimento',
-  drink: 'Bebida',
-  snack: 'Snack',
-  clean: 'Limpieza',
-  other: 'Otro'
-};
+// --- SISTEMA DE CATEGORÍAS E IMPUESTOS DINÁMICOS ---
+const DEFAULT_CATEGORIES = { food: 'Alimento', drink: 'Bebida', snack: 'Snack', clean: 'Limpieza', other: 'Otro' };
+const DEFAULT_TAXES = { food: 10, drink: 21, snack: 21, clean: 21, other: 21 };
 
-// --- IMPUESTOS (IVA) ---
-const DEFAULT_TAXES = {
-  food: 10,   // Ejemplo: IVA reducido
-  drink: 21,  // Ejemplo: IVA general
-  snack: 21,
-  clean: 21,
-  other: 21
-};
+let savedCats = localStorage.getItem('mi_supermercado_cats');
+let categories = savedCats ? JSON.parse(savedCats) : JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
 
 let savedTaxes = localStorage.getItem('mi_supermercado_taxes');
 let taxes = savedTaxes ? JSON.parse(savedTaxes) : JSON.parse(JSON.stringify(DEFAULT_TAXES));
 
-function saveTaxes() {
+function saveCategoriesAndTaxes() {
+    localStorage.setItem('mi_supermercado_cats', JSON.stringify(categories));
     localStorage.setItem('mi_supermercado_taxes', JSON.stringify(taxes));
+}
+
+function updateCategorySelects() {
+    const select = document.getElementById('new-cat');
+    select.innerHTML = '';
+    for(let key in categories) {
+        select.innerHTML += `<option value="${key}">${categories[key]}</option>`;
+    }
 }
 
 function renderConfig() {
@@ -264,7 +275,7 @@ function renderConfig() {
     for (let key in taxes) {
         html += `
           <div class="form-field">
-            <label>${CAT_NAMES[key] || key} (%)</label>
+            <label>${categories[key] || key} (%)</label>
             <input type="number" id="tax-input-${key}" value="${taxes[key]}" min="0" max="100" step="0.1">
           </div>
         `;
@@ -279,12 +290,36 @@ function saveTaxConfig() {
             taxes[key] = inputVal;
         }
     }
-    saveTaxes();
-    updateTicketUI(); // Actualiza los cálculos si hay un ticket en curso
-    renderInventory(); // Actualiza el IVA mostrado en inventario
+    saveCategoriesAndTaxes();
+    updateTicketUI();
+    renderInventory();
     
     const msg = document.getElementById('config-msg');
-    msg.innerHTML = '<span style="color:#3B6D11;">¡IVA guardado con éxito!</span>';
+    msg.innerHTML = '<span style="color:#3B6D11;">¡Cambios guardados con éxito!</span>';
+    setTimeout(() => msg.innerHTML = '', 3000);
+}
+
+function createNewCategory() {
+    const nameInput = document.getElementById('custom-cat-name').value.trim();
+    const taxInput = parseFloat(document.getElementById('custom-cat-tax').value);
+    const msg = document.getElementById('config-msg');
+
+    if(!nameInput) {
+        msg.innerHTML = '<span style="color:#a32d2d;">El nombre es obligatorio.</span>';
+        return;
+    }
+
+    // Crear un ID único
+    const newId = 'cat_' + Date.now();
+    categories[newId] = nameInput;
+    taxes[newId] = isNaN(taxInput) ? 21 : taxInput;
+
+    saveCategoriesAndTaxes();
+    updateCategorySelects();
+    renderConfig();
+
+    document.getElementById('custom-cat-name').value = '';
+    msg.innerHTML = '<span style="color:#3B6D11;">¡Categoría creada!</span>';
     setTimeout(() => msg.innerHTML = '', 3000);
 }
 
@@ -306,11 +341,13 @@ function saveInventory() {
 }
 
 function restoreDefaults() {
-    if(confirm('¿Estás seguro de querer borrar tus productos y volver a los de fábrica?')) {
+    if(confirm('¿Estás seguro de querer borrar tus productos y ajustes para volver a fábrica?')) {
         inventory = JSON.parse(JSON.stringify(DEFAULT_INVENTORY));
+        categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
         taxes = JSON.parse(JSON.stringify(DEFAULT_TAXES));
         saveInventory();
-        saveTaxes();
+        saveCategoriesAndTaxes();
+        updateCategorySelects();
         renderInventory();
         renderConfig();
         renderSampleCodes();
@@ -335,7 +372,7 @@ function showTab(name) {
   }
 }
 
-// --- LÓGICA DE CAJA (ESCÁNER Y TICKET) ---
+// --- LÓGICA DE CAJA ---
 function searchBarcode() {
   const input = document.getElementById('barcode-input');
   const code = input.value.trim();
@@ -344,15 +381,15 @@ function searchBarcode() {
   if (!code) return;
   disp.className = 'price-screen';
 
-  // Cobro Manual (Detección de punto)
   if (code.includes('.') && !isNaN(parseFloat(code))) {
       const manualPrice = parseFloat(code);
       if (manualPrice >= 0) {
+          const manualCode = 'MANUAL_' + Date.now(); // ID único para cada entrada manual
           const manualProduct = { 
-              code: 'MANUAL_' + manualPrice.toFixed(2), 
+              code: manualCode, 
               name: 'Artículo manual', 
               price: manualPrice, 
-              cat: 'other' // Se aplicará el IVA de la categoría "other"
+              cat: 'other'
           };
           
           document.getElementById('display-name').textContent = manualProduct.name;
@@ -396,11 +433,22 @@ function addToCart(product) {
     updateTicketUI();
 }
 
+// NUEVA FUNCIÓN: Modificar cantidad en el ticket
+function changeCartQty(code, change) {
+    if (cart[code]) {
+        cart[code].qty += change;
+        if (cart[code].qty <= 0) {
+            delete cart[code]; // Borrar si llega a 0
+        }
+        updateTicketUI();
+    }
+}
+
 function updateTicketUI() {
     const tbody = document.getElementById('ticket-body');
     let grandTotal = 0;
     let totalBase = 0;
-    let taxesBreakdown = {}; // Objeto para agrupar impuestos ej: {"21": 5.40, "10": 1.20}
+    let taxesBreakdown = {}; 
     
     const cartKeys = Object.keys(cart);
     
@@ -422,23 +470,17 @@ function updateTicketUI() {
         let subtotal = 0;
         let promoText = '';
 
-        // Cálculo de promociones
         if (p.promo && q >= p.promo.qty) {
             const promoPacks = Math.floor(q / p.promo.qty);
             const remainder = q % p.promo.qty;
-            
             subtotal = (promoPacks * p.promo.price) + (remainder * p.price);
-            const normalPrice = q * p.price;
-            const savings = normalPrice - subtotal;
-            promoText = `<span class="item-promo-note">Oferta (${p.promo.qty}x€${p.promo.price.toFixed(2)}) - Ahorras: €${savings.toFixed(2)}</span>`;
+            const savings = (q * p.price) - subtotal;
+            promoText = `<span class="item-promo-note">Oferta (${p.promo.qty}x€${p.promo.price.toFixed(2)}) - Ahorro: €${savings.toFixed(2)}</span>`;
         } else {
             subtotal = q * p.price;
         }
 
-        // --- CÁLCULO DE IVA ---
         const taxRate = taxes[p.cat] || 0;
-        // La fórmula asume que el precio de estante YA tiene el IVA incluido.
-        // Base Imponible = Total / (1 + (PorcentajeIVA / 100))
         const itemBase = subtotal / (1 + (taxRate / 100));
         const itemTaxAmount = subtotal - itemBase;
 
@@ -448,11 +490,16 @@ function updateTicketUI() {
         if (!taxesBreakdown[taxRate]) taxesBreakdown[taxRate] = 0;
         taxesBreakdown[taxRate] += itemTaxAmount;
 
-        // Html del producto en el ticket
+        // Html del producto con los botones + y -
         html += `
         <div class="ticket-item">
+            <div class="qty-control">
+                <button class="qty-btn" onclick="changeCartQty('${code}', -1)">-</button>
+                <span class="item-qty-text">${q}</span>
+                <button class="qty-btn" onclick="changeCartQty('${code}', 1)">+</button>
+            </div>
             <div class="item-details">
-                <span class="item-qty">${q}x</span> ${p.name}
+                ${p.name}
                 ${promoText}
             </div>
             <div class="item-total">€${subtotal.toFixed(2)}</div>
@@ -460,9 +507,8 @@ function updateTicketUI() {
     });
 
     tbody.innerHTML = html;
-    tbody.scrollTop = tbody.scrollHeight; // Auto-scroll
+    tbody.scrollTop = tbody.scrollHeight;
 
-    // --- ACTUALIZAR TOTALES Y DESGLOSE DE IVA ---
     document.getElementById('ticket-subtotal').textContent = '€' + totalBase.toFixed(2);
     
     let taxesHTML = '';
@@ -511,16 +557,18 @@ function renderInventory() {
   }
 
   let html = `<table><thead><tr>
-    <th>Código</th><th>Producto</th><th>Precio</th><th>Oferta</th><th></th>
+    <th>Código</th><th>Producto</th><th>Categoría</th><th>Precio</th><th>Oferta</th><th></th>
   </tr></thead><tbody>`;
 
   inventory.forEach((p, i) => {
     let promoHTML = p.promo ? `<div class="promo-badge">${p.promo.qty} por €${p.promo.price.toFixed(2)}</div>` : '-';
+    let catName = categories[p.cat] || p.cat;
     let pTax = taxes[p.cat] || 0;
     
     html += `<tr>
       <td class="code">${p.code}</td>
-      <td>${p.name} <span class="tax-badge">(${pTax}% IVA)</span></td>
+      <td>${p.name}</td>
+      <td><span class="tax-badge" title="IVA ${pTax}%">${catName}</span></td>
       <td class="price-col">€${p.price.toFixed(2)}</td>
       <td>${promoHTML}</td>
       <td style="text-align:right;"><button class="danger" style="padding: 4px 8px;" onclick="deleteProduct(${i})">✕</button></td>
@@ -540,15 +588,19 @@ function deleteProduct(index) {
   }
 }
 
-// 1. Exportar a CSV
+// --- IMPORTAR / EXPORTAR CSV (CON CATEGORÍAS) ---
 function exportToCSV() {
-    let csvContent = "data:text/csv;charset=utf-8,Codigo,Nombre,Precio,Categoria,PromoCantidad,PromoPrecio\n";
+    // Añadimos "CategoriaIVA" para salvar el % configurado
+    let csvContent = "data:text/csv;charset=utf-8,Codigo,Nombre,Precio,CategoriaNombre,CategoriaIVA,PromoCantidad,PromoPrecio\n";
     
     inventory.forEach(p => {
         const safeName = p.name.replace(/,/g, ' '); 
+        const catName = (categories[p.cat] || 'Otro').replace(/,/g, ' ');
+        const catTax = taxes[p.cat] || 21;
         const pQty = p.promo ? p.promo.qty : '';
         const pPrice = p.promo ? p.promo.price : '';
-        csvContent += `${p.code},${safeName},${p.price},${p.cat},${pQty},${pPrice}\n`;
+        
+        csvContent += `${p.code},${safeName},${p.price},${catName},${catTax},${pQty},${pPrice}\n`;
     });
 
     const encodedUri = encodeURI(csvContent);
@@ -560,7 +612,6 @@ function exportToCSV() {
     document.body.removeChild(link);
 }
 
-// 2. Importar de CSV
 function importFromCSV(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -571,20 +622,40 @@ function importFromCSV(event) {
         const rows = content.split("\n").slice(1);
         
         let newInventory = [];
+        
         rows.forEach(row => {
             if (!row.trim()) return;
             const cols = row.split(",");
-            if (cols.length >= 3) {
+            if (cols.length >= 4) {
+                const csvCatName = cols[3].trim() || 'Otro';
+                const csvCatTax = parseFloat(cols[4]) || 21;
+                
+                // Buscar si la categoría existe por su Nombre
+                let targetCatId = null;
+                for (let key in categories) {
+                    if (categories[key].toLowerCase() === csvCatName.toLowerCase()) {
+                        targetCatId = key;
+                        break;
+                    }
+                }
+                
+                // Si no existe, crearla dinámicamente
+                if (!targetCatId) {
+                    targetCatId = 'cat_import_' + Math.random().toString(36).substr(2, 5);
+                    categories[targetCatId] = csvCatName;
+                    taxes[targetCatId] = csvCatTax;
+                }
+
                 let item = {
                     code: cols[0].trim(),
                     name: cols[1].trim(),
                     price: parseFloat(cols[2]),
-                    cat: cols[3] ? cols[3].trim() : 'other'
+                    cat: targetCatId
                 };
                 
-                if (cols[4] && cols[5]) {
-                    const promoQty = parseInt(cols[4]);
-                    const promoPrice = parseFloat(cols[5]);
+                if (cols[5] && cols[6]) {
+                    const promoQty = parseInt(cols[5]);
+                    const promoPrice = parseFloat(cols[6]);
                     if (!isNaN(promoQty) && !isNaN(promoPrice)) {
                         item.promo = { qty: promoQty, price: promoPrice };
                     }
@@ -596,9 +667,14 @@ function importFromCSV(event) {
         if (confirm(`¿Cargar ${newInventory.length} productos? Esto reemplazará tu inventario actual.`)) {
             inventory = newInventory;
             saveInventory();
+            saveCategoriesAndTaxes();
+            
+            updateCategorySelects();
             renderInventory();
-            alert("Inventario cargado con éxito");
+            renderConfig();
             renderSampleCodes();
+            
+            alert("Inventario y Categorías cargados con éxito");
             event.target.value = '';
         }
     };
@@ -664,16 +740,15 @@ function renderSampleCodes() {
 }
 
 // Iniciar app
+updateCategorySelects();
 renderConfig();
 renderSampleCodes();
 updateTicketUI();
 
-// Registro del Service Worker para convertirlo en PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('sw.js')
-      .then(reg => console.log('PWA lista y registrada'))
-      .catch(err => console.log('Error al registrar PWA', err));
+      .catch(err => console.log('SW no registrado', err));
   });
 }
 </script>

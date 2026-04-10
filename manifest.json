@@ -1,14 +1,14 @@
 {
   "name": "Supermercado POS",
-  "short_name": "Súper POS",
-  "description": "Sistema de inventario y caja persistente",
-  "start_url": "ai_studio_code.html",
+  "short_name": "CajaPOS",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1a1a18",
+  "description": "Sistema de caja e inventario persistente",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/1162/1162499.png",
+      "src": "https://cdn-icons-png.flaticon.com/512/2331/2331970.png",
       "sizes": "512x512",
       "type": "image/png"
     }

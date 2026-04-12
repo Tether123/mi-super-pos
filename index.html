@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Caja e Inventario</title>
+  <title>Caja y Inventario — Persistente con IVA</title>
   <link rel="manifest" href="manifest.json">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -89,7 +89,7 @@
     .sample-codes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
     .sample-codes button { font-family: monospace; font-size: 12px; padding: 4px 10px; }
 
-    /* MODALES */
+    /* MODALES COBRO Y EDICIÓN */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(2px); z-index: 1000; }
     .modal-overlay.active { display: block; }
     .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 24px; border-radius: 16px; z-index: 1001; width: 90%; max-width: 450px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); }
@@ -147,13 +147,15 @@
           <div style="text-align: center; color: #999; font-size: 13px; margin-top: 2rem;" data-i18n="empty_cart">El carrito está vacío</div>
         </div>
         
-        <!-- FOOTER DEL TICKET -->
+        <!-- FOOTER DEL TICKET (CON IVA) -->
         <div class="ticket-footer">
           <div class="ticket-footer-row">
             <span data-i18n="base_tax">Base Imponible</span>
             <span id="ticket-subtotal">€0.00</span>
           </div>
-          <div id="ticket-taxes-container"></div>
+          <div id="ticket-taxes-container">
+            <!-- Los desgloses de IVA se inyectan aquí -->
+          </div>
           <div class="ticket-total-row">
             <span class="ticket-total-label" data-i18n="total_tax">TOTAL (IVA inc.)</span>
             <span class="ticket-total-value" id="ticket-total">€0.00</span>
@@ -162,7 +164,7 @@
 
         <div class="ticket-actions">
           <button class="danger" onclick="clearCart()" data-i18n="btn_empty">Vaciar</button>
-          <button class="primary" onclick="checkout()" data-i18n="btn_checkout">Cobrar (F2)</button>
+          <button class="primary" onclick="checkout()" data-i18n="btn_checkout">Cobrar</button>
         </div>
       </div>
 
@@ -176,9 +178,10 @@
       <button class="small-text" onclick="restoreDefaults()" data-i18n="inv_restore">Restaurar datos de fábrica</button>
     </div>
 
+    <!-- BOTONES EXACTOS DEL ORIGINAL (Solo se traduce el texto interno, no la lógica) -->
     <div style="margin-top: 10px; margin-bottom: 15px; display: flex; gap: 10px;">
       <button onclick="exportToCSV()" data-i18n="inv_download">Descargar copia (CSV)</button>
-      <label class="button" style="cursor:pointer; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; background: #fff;">
+      <label class="button" style="cursor:pointer; padding: 10px; border: 1px solid #ccc; border-radius: 8px;">
         <span data-i18n="inv_upload">Subir desde PC (CSV)</span>
         <input type="file" accept=".csv" onchange="importFromCSV(event)" style="display:none;">
       </label>
@@ -193,24 +196,25 @@
     <div class="form-grid">
       <div class="form-field">
         <label data-i18n="add_code">Código de barras *</label>
-        <input type="text" id="new-code" style="font-family:monospace;" />
+        <input type="text" id="new-code" placeholder="ej. 7501234567890" style="font-family:monospace;" />
       </div>
       <div class="form-field">
         <label data-i18n="add_name">Nombre del producto *</label>
-        <input type="text" id="new-name" />
+        <input type="text" id="new-name" placeholder="ej. Leche entera 1L" />
       </div>
       <div class="form-field">
-        <label data-i18n="add_price">Precio final con IVA (€) *</label>
+        <label data-i18n="add_price">Precio unitario final con IVA (€) *</label>
         <input type="number" id="new-price" placeholder="0.00" step="0.01" min="0" />
       </div>
       <div class="form-field">
         <label data-i18n="add_cat">Categoría</label>
+        <!-- LAS CATEGORÍAS NO SE TRADUCEN SEGÚN PETICIÓN -->
         <select id="new-cat">
-          <option value="food" data-i18n="cat_food">Alimento</option>
-          <option value="drink" data-i18n="cat_drink">Bebida</option>
-          <option value="snack" data-i18n="cat_snack">Snack</option>
-          <option value="clean" data-i18n="cat_clean">Limpieza</option>
-          <option value="other" data-i18n="cat_other">Otro</option>
+          <option value="food">Alimento</option>
+          <option value="drink">Bebida</option>
+          <option value="snack">Snack</option>
+          <option value="clean">Limpieza</option>
+          <option value="other">Otro</option>
         </select>
       </div>
     </div>
@@ -220,11 +224,11 @@
       <div class="form-grid" style="margin-bottom: 0;">
         <div class="form-field">
           <label data-i18n="add_promo_qty">Cantidad mínima</label>
-          <input type="number" id="new-promo-qty" min="2" />
+          <input type="number" id="new-promo-qty" placeholder="Ej: 3" min="2" />
         </div>
         <div class="form-field">
-          <label data-i18n="add_promo_price">Precio total oferta (€)</label>
-          <input type="number" id="new-promo-price" step="0.01" min="0" />
+          <label data-i18n="add_promo_price">Precio total oferta con IVA (€)</label>
+          <input type="number" id="new-promo-price" placeholder="Ej: 2.00" step="0.01" min="0" />
         </div>
       </div>
     </div>
@@ -238,16 +242,19 @@
     <p class="section-title" data-i18n="config_title">Impuestos por Categoría (% IVA)</p>
     <p style="font-size: 13px; color: #666; margin-bottom: 15px;" data-i18n="config_desc">Define el porcentaje de IVA aplicado a cada tipo de producto. Los precios de tu inventario ya incluyen el IVA, este panel permite desglosarlo correctamente en el ticket.</p>
     
-    <div class="form-grid" id="tax-config-grid"></div>
+    <div class="form-grid" id="tax-config-grid">
+      <!-- Los inputs de IVA se inyectan aquí -->
+    </div>
     
     <button class="primary" onclick="saveTaxConfig()" data-i18n="btn_save_tax">Guardar Impuestos</button>
     <div id="config-msg" style="text-align: left; display: inline-block; margin-left: 10px; font-size: 14px;"></div>
   </div>
 </div>
 
-<!-- MODALES -->
+<!-- ================= MODALES NUEVOS ================= -->
 <div id="modal-overlay" class="modal-overlay" onclick="closeAllModals()"></div>
 
+<!-- MODAL VENTANILLA DE COBRO -->
 <div id="checkout-modal" class="modal">
   <h2 data-i18n="checkout_title">Ventanilla de Cobro</h2>
   <div class="checkout-total"><span data-i18n="checkout_total">Total a pagar:</span> <span id="checkout-total-val">€0.00</span></div>
@@ -270,42 +277,43 @@
   </div>
 </div>
 
+<!-- MODAL EDITAR PRODUCTO -->
 <div id="edit-modal" class="modal">
   <h2 data-i18n="edit_title">Editar Producto</h2>
   <div class="form-grid">
     <div class="form-field">
-      <label data-i18n="add_code">Código de barras</label>
+      <label data-i18n="add_code">Código de barras *</label>
       <input type="text" id="edit-code" style="font-family:monospace; background: #f5f5f5;" readonly />
     </div>
     <div class="form-field">
-      <label data-i18n="add_name">Nombre del producto</label>
+      <label data-i18n="add_name">Nombre del producto *</label>
       <input type="text" id="edit-name" />
     </div>
     <div class="form-field">
-      <label data-i18n="add_price">Precio final con IVA (€)</label>
+      <label data-i18n="add_price">Precio unitario final con IVA (€) *</label>
       <input type="number" id="edit-price" step="0.01" min="0" />
     </div>
     <div class="form-field">
       <label data-i18n="add_cat">Categoría</label>
       <select id="edit-cat">
-        <option value="food" data-i18n="cat_food">Alimento</option>
-        <option value="drink" data-i18n="cat_drink">Bebida</option>
-        <option value="snack" data-i18n="cat_snack">Snack</option>
-        <option value="clean" data-i18n="cat_clean">Limpieza</option>
-        <option value="other" data-i18n="cat_other">Otro</option>
+        <option value="food">Alimento</option>
+        <option value="drink">Bebida</option>
+        <option value="snack">Snack</option>
+        <option value="clean">Limpieza</option>
+        <option value="other">Otro</option>
       </select>
     </div>
   </div>
 
   <div class="promo-box" style="margin-top: 10px;">
-    <h4 data-i18n="add_promo_title">Oferta por volumen</h4>
+    <h4 data-i18n="add_promo_title">Oferta por volumen (Opcional)</h4>
     <div class="form-grid" style="margin-bottom: 0;">
       <div class="form-field">
         <label data-i18n="add_promo_qty">Cantidad mínima</label>
         <input type="number" id="edit-promo-qty" min="2" />
       </div>
       <div class="form-field">
-        <label data-i18n="add_promo_price">Precio oferta (€)</label>
+        <label data-i18n="add_promo_price">Precio total oferta con IVA (€)</label>
         <input type="number" id="edit-promo-price" step="0.01" min="0" />
       </div>
     </div>
@@ -317,8 +325,9 @@
   </div>
 </div>
 
+
 <script>
-// --- SISTEMA DE TRADUCCIÓN (ESPAÑOL / CHINO) ---
+// --- SISTEMA DE TRADUCCIÓN ---
 const dict = {
   es: {
     title: "Supermercado POS",
@@ -326,24 +335,23 @@ const dict = {
     scan_start: "Escanea un código para empezar", placeholder_barcode: "Código de barras o '1.'...",
     btn_add: "Añadir", hint_scan: "Presiona Enter para escanear. <b>Truco:</b> Escribe un precio con punto (Ej: <code>1.</code> o <code>2.50</code>) para cobro manual.",
     quick_codes: "Códigos de prueba rápidos", ticket_header: "Ticket de Compra", empty_cart: "El carrito está vacío",
-    base_tax: "Base Imponible", total_tax: "TOTAL (IVA inc.)", btn_empty: "Vaciar", btn_checkout: "Cobrar (F2)",
+    base_tax: "Base Imponible", total_tax: "TOTAL (IVA inc.)", btn_empty: "Vaciar", btn_checkout: "Cobrar",
     inv_title: "Productos en inventario", inv_restore: "Restaurar datos de fábrica", inv_download: "Descargar copia (CSV)", inv_upload: "Subir desde PC (CSV)",
-    add_title: "Nuevo producto", add_code: "Código de barras *", add_name: "Nombre del producto *", add_price: "Precio final con IVA (€) *",
-    add_cat: "Categoría", add_promo_title: "Oferta por volumen (Opcional)", add_promo_qty: "Cantidad mínima", add_promo_price: "Precio total oferta (€)",
+    add_title: "Nuevo producto", add_code: "Código de barras *", add_name: "Nombre del producto *", add_price: "Precio unitario final con IVA (€) *",
+    add_cat: "Categoría", add_promo_title: "Oferta por volumen (Opcional)", add_promo_qty: "Cantidad mínima", add_promo_price: "Precio total oferta con IVA (€)",
     btn_add_product: "Agregar al inventario", config_title: "Impuestos por Categoría (% IVA)",
     config_desc: "Define el porcentaje de IVA aplicado a cada tipo de producto. Los precios de tu inventario ya incluyen el IVA, este panel permite desglosarlo correctamente en el ticket.",
     btn_save_tax: "Guardar Impuestos", checkout_title: "Ventanilla de Cobro", checkout_total: "Total a pagar: ",
     checkout_given: "Efectivo recibido (€)", checkout_change: "Cambio: ", btn_cancel: "Cancelar", btn_confirm: "Confirmar (Enter)",
     edit_title: "Editar Producto", btn_save_edit: "Guardar Cambios",
     lang_btn: "🇨🇳 中文",
-    cat_food: "Alimento", cat_drink: "Bebida", cat_snack: "Snack", cat_clean: "Limpieza", cat_other: "Otro",
     manual_item: "Artículo manual", not_found: "Código no encontrado", error: "Error",
-    alert_empty: "El carrito está vacío. Escanea productos primero.", alert_missing: "Faltan",
+    alert_empty: "El carrito está vacío.", alert_missing: "Faltan",
     alert_del_prod: "¿Eliminar este producto del inventario?", alert_restore: "¿Estás seguro de querer borrar tus productos y volver a los de fábrica?",
     alert_req: "El nombre y precio son obligatorios y válidos.", alert_exist: "Ese código ya existe.",
     msg_added: "¡Producto agregado!", msg_tax_saved: "¡IVA guardado con éxito!", checkout_success: "¡Cobro realizado con éxito!\nTotal cobrado: ",
     lbl_iva: "IVA", lbl_incl: "incl.", lbl_savings: "Ahorras", lbl_offer: "Oferta", lbl_by: "por",
-    th_code: "Código", th_product: "Producto", th_price: "Precio", th_promo: "Oferta", th_actions: "Acciones"
+    th_code: "Código", th_product: "Producto", th_price: "Precio", th_promo: "Oferta", th_actions: ""
   },
   zh: {
     title: "超市收银系统",
@@ -351,24 +359,23 @@ const dict = {
     scan_start: "扫描条形码以开始", placeholder_barcode: "条形码或输入 '1.'...",
     btn_add: "添加", hint_scan: "按回车键扫描。<b>提示：</b>输入带小数点的价格（如 <code>1.</code> 或 <code>2.50</code>）进行手动收费。",
     quick_codes: "快速测试条形码", ticket_header: "购物小票", empty_cart: "购物车是空的",
-    base_tax: "税前总价", total_tax: "总计 (含税)", btn_empty: "清空", btn_checkout: "结账 (F2)",
+    base_tax: "税前总价", total_tax: "总计 (含税)", btn_empty: "清空", btn_checkout: "结账",
     inv_title: "库存商品", inv_restore: "恢复出厂设置", inv_download: "下载副本 (CSV)", inv_upload: "从电脑上传 (CSV)",
     add_title: "新商品", add_code: "条形码 *", add_name: "商品名称 *", add_price: "含税最终价格 (€) *",
-    add_cat: "分类", add_promo_title: "批量优惠 (可选)", add_promo_qty: "最低数量", add_promo_price: "优惠总价 (€)",
+    add_cat: "分类", add_promo_title: "批量优惠 (可选)", add_promo_qty: "最低数量", add_promo_price: "含税优惠总价 (€)",
     btn_add_product: "添加到库存", config_title: "按类别分类的税率 (% IVA)",
     config_desc: "定义适用于每类商品的增值税百分比。库存中的价格已包含增值税，此面板可让您在小票上正确显示细目。",
     btn_save_tax: "保存税率", checkout_title: "结账窗口", checkout_total: "应付总额：",
     checkout_given: "实收现金 (€)", checkout_change: "找零：", btn_cancel: "取消", btn_confirm: "确认 (Enter)",
     edit_title: "编辑商品", btn_save_edit: "保存更改",
     lang_btn: "🇪🇸 Español",
-    cat_food: "食品", cat_drink: "饮料", cat_snack: "零食", cat_clean: "清洁", cat_other: "其他",
     manual_item: "手动输入商品", not_found: "未找到条形码", error: "错误",
-    alert_empty: "购物车为空。请先扫描商品。", alert_missing: "还差",
+    alert_empty: "购物车为空。", alert_missing: "还差",
     alert_del_prod: "确定要从库存中删除此商品吗？", alert_restore: "您确定要删除所有商品并恢复出厂设置吗？",
     alert_req: "名称和价格是必填的有效项。", alert_exist: "该条形码已存在。",
     msg_added: "商品已添加！", msg_tax_saved: "增值税保存成功！", checkout_success: "结账成功！\n总收取的金额：",
     lbl_iva: "增值税", lbl_incl: "包含", lbl_savings: "节省", lbl_offer: "优惠", lbl_by: "特价",
-    th_code: "条形码", th_product: "商品", th_price: "价格", th_promo: "优惠", th_actions: "操作"
+    th_code: "条形码", th_product: "商品", th_price: "价格", th_promo: "优惠", th_actions: ""
   }
 };
 
@@ -383,10 +390,6 @@ function applyLanguage() {
             if (el.tagName === 'INPUT' && el.hasAttribute('placeholder')) el.placeholder = dict[currentLang][key];
             else el.innerHTML = dict[currentLang][key];
         }
-    });
-    
-    document.querySelectorAll('select option').forEach(opt => {
-        if (opt.hasAttribute('data-i18n')) opt.textContent = dict[currentLang][opt.getAttribute('data-i18n')];
     });
 
     document.getElementById('lang-toggle-btn').innerHTML = dict[currentLang].lang_btn;
@@ -406,12 +409,30 @@ function toggleLanguage() {
     applyLanguage();
 }
 
-// --- IMPUESTOS E INVENTARIO ---
-const DEFAULT_TAXES = { food: 10, drink: 21, snack: 21, clean: 21, other: 21 };
+// --- DICCIONARIO DE CATEGORÍAS (INTOCABLE, SIEMPRE EN ESPAÑOL) ---
+const CAT_NAMES = {
+  food: 'Alimento',
+  drink: 'Bebida',
+  snack: 'Snack',
+  clean: 'Limpieza',
+  other: 'Otro'
+};
+
+// --- IMPUESTOS (IVA) ---
+const DEFAULT_TAXES = {
+  food: 10,   // Ejemplo: IVA reducido
+  drink: 21,  // Ejemplo: IVA general
+  snack: 21,
+  clean: 21,
+  other: 21
+};
+
 let savedTaxes = localStorage.getItem('mi_supermercado_taxes');
 let taxes = savedTaxes ? JSON.parse(savedTaxes) : JSON.parse(JSON.stringify(DEFAULT_TAXES));
 
-function saveTaxes() { localStorage.setItem('mi_supermercado_taxes', JSON.stringify(taxes)); }
+function saveTaxes() {
+    localStorage.setItem('mi_supermercado_taxes', JSON.stringify(taxes));
+}
 
 function renderConfig() {
     const grid = document.getElementById('tax-config-grid');
@@ -419,7 +440,7 @@ function renderConfig() {
     for (let key in taxes) {
         html += `
           <div class="form-field">
-            <label>${t('cat_'+key)} (%)</label>
+            <label>${CAT_NAMES[key] || key} (%)</label>
             <input type="number" id="tax-input-${key}" value="${taxes[key]}" min="0" max="100" step="0.1">
           </div>
         `;
@@ -430,17 +451,20 @@ function renderConfig() {
 function saveTaxConfig() {
     for (let key in taxes) {
         const inputVal = parseFloat(document.getElementById(`tax-input-${key}`).value);
-        if (!isNaN(inputVal) && inputVal >= 0) taxes[key] = inputVal;
+        if (!isNaN(inputVal) && inputVal >= 0) {
+            taxes[key] = inputVal;
+        }
     }
     saveTaxes();
-    updateTicketUI(); 
-    renderInventory(); 
+    updateTicketUI(); // Actualiza los cálculos si hay un ticket en curso
+    renderInventory(); // Actualiza el IVA mostrado en inventario
     
     const msg = document.getElementById('config-msg');
     msg.innerHTML = `<span style="color:#3B6D11;">${t('msg_tax_saved')}</span>`;
     setTimeout(() => msg.innerHTML = '', 3000);
 }
 
+// --- DATOS INICIALES DEL INVENTARIO Y GUARDADO EXACTO ---
 const DEFAULT_INVENTORY = [
   { code: '8410188070031', name: 'Leche entera 1L',          price: 0.99, cat: 'food', promo: { qty: 6, price: 5.00 } },
   { code: '8410188030035', name: 'Pan de molde 500g',        price: 1.35, cat: 'food' },
@@ -453,7 +477,9 @@ const DEFAULT_INVENTORY = [
 let savedData = localStorage.getItem('mi_supermercado_inventario');
 let inventory = savedData ? JSON.parse(savedData) : JSON.parse(JSON.stringify(DEFAULT_INVENTORY));
 
-function saveInventory() { localStorage.setItem('mi_supermercado_inventario', JSON.stringify(inventory)); }
+function saveInventory() {
+    localStorage.setItem('mi_supermercado_inventario', JSON.stringify(inventory));
+}
 
 function restoreDefaults() {
     if(confirm(t('alert_restore'))) {
@@ -466,10 +492,11 @@ function restoreDefaults() {
     }
 }
 
-// --- CARRITO Y NAVEGACIÓN ---
+// Carrito
 let cart = {}; 
-let currentCheckoutTotal = 0; 
+let currentCheckoutTotal = 0; // Para el modal
 
+// --- NAVEGACIÓN ---
 function showTab(name) {
   const names = ['scanner', 'inventory', 'add', 'config'];
   document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', names[i] === name));
@@ -484,6 +511,7 @@ function showTab(name) {
   }
 }
 
+// --- LÓGICA DE CAJA (ESCÁNER Y TICKET) ---
 function searchBarcode() {
   const input = document.getElementById('barcode-input');
   const code = input.value.trim();
@@ -492,6 +520,7 @@ function searchBarcode() {
   if (!code) return;
   disp.className = 'price-screen';
 
+  // Cobro Manual
   if (code.includes('.') && !isNaN(parseFloat(code))) {
       const manualPrice = parseFloat(code);
       if (manualPrice >= 0) {
@@ -499,12 +528,12 @@ function searchBarcode() {
               code: 'MANUAL_' + manualPrice.toFixed(2), 
               name: t('manual_item'), 
               price: manualPrice, 
-              cat: 'other' 
+              cat: 'other'
           };
           
           document.getElementById('display-name').textContent = manualProduct.name;
           document.getElementById('display-price').innerHTML = '<span class="price-currency">€</span>' + manualPrice.toFixed(2);
-          document.getElementById('display-tax').textContent = `(${taxes['other']}% ${t('lbl_iva')} ${t('lbl_incl')})`;
+          document.getElementById('display-tax').textContent = `(IVA ${taxes['other']}% ${t('lbl_incl')})`;
           disp.classList.add('success');
           
           addToCart(manualProduct);
@@ -516,9 +545,9 @@ function searchBarcode() {
 
   if (product) {
     const taxRate = taxes[product.cat] || 0;
-    document.getElementById('display-name').textContent = product.name;
+    document.getElementById('display-name').textContent = product.name; // NO TRADUCIDO
     document.getElementById('display-price').innerHTML = '<span class="price-currency">€</span>' + product.price.toFixed(2);
-    document.getElementById('display-tax').textContent = `(${taxRate}% ${t('lbl_iva')} ${t('lbl_incl')})`;
+    document.getElementById('display-tax').textContent = `(${t('lbl_iva')} ${taxRate}% ${t('lbl_incl')})`;
     disp.classList.add('success');
     addToCart(product);
   } else {
@@ -528,18 +557,22 @@ function searchBarcode() {
     disp.classList.add('error');
   }
 
-  input.value = ''; input.focus();
+  input.value = '';
+  input.focus();
 }
 
 function addToCart(product) {
-    if (cart[product.code]) cart[product.code].qty += 1;
-    else cart[product.code] = { product: product, qty: 1 };
+    if (cart[product.code]) { cart[product.code].qty += 1; } 
+    else { cart[product.code] = { product: product, qty: 1 }; }
     updateTicketUI();
 }
 
 function updateTicketUI() {
     const tbody = document.getElementById('ticket-body');
-    let grandTotal = 0; let totalBase = 0; let taxesBreakdown = {}; 
+    let grandTotal = 0;
+    let totalBase = 0;
+    let taxesBreakdown = {}; 
+    
     const cartKeys = Object.keys(cart);
     
     if (cartKeys.length === 0) {
@@ -552,6 +585,7 @@ function updateTicketUI() {
     }
 
     let html = '';
+
     cartKeys.forEach(code => {
         const item = cart[code];
         const p = item.product;
@@ -562,6 +596,7 @@ function updateTicketUI() {
         if (p.promo && q >= p.promo.qty) {
             const promoPacks = Math.floor(q / p.promo.qty);
             const remainder = q % p.promo.qty;
+            
             subtotal = (promoPacks * p.promo.price) + (remainder * p.price);
             const savings = (q * p.price) - subtotal;
             promoText = `<span class="item-promo-note">${t('lbl_offer')} (${p.promo.qty}x€${p.promo.price.toFixed(2)}) - ${t('lbl_savings')}: €${savings.toFixed(2)}</span>`;
@@ -573,19 +608,25 @@ function updateTicketUI() {
         const itemBase = subtotal / (1 + (taxRate / 100));
         const itemTaxAmount = subtotal - itemBase;
 
-        grandTotal += subtotal; totalBase += itemBase;
+        grandTotal += subtotal;
+        totalBase += itemBase;
+
         if (!taxesBreakdown[taxRate]) taxesBreakdown[taxRate] = 0;
         taxesBreakdown[taxRate] += itemTaxAmount;
 
         html += `
         <div class="ticket-item">
-            <div class="item-details"><span class="item-qty">${q}x</span> ${p.name} ${promoText}</div>
+            <div class="item-details">
+                <span class="item-qty">${q}x</span> ${p.name}
+                ${promoText}
+            </div>
             <div class="item-total">€${subtotal.toFixed(2)}</div>
         </div>`;
     });
 
     tbody.innerHTML = html;
-    tbody.scrollTop = tbody.scrollHeight;
+    tbody.scrollTop = tbody.scrollHeight; 
+
     document.getElementById('ticket-subtotal').textContent = '€' + totalBase.toFixed(2);
     
     let taxesHTML = '';
@@ -599,12 +640,14 @@ function updateTicketUI() {
         }
     }
     document.getElementById('ticket-taxes-container').innerHTML = taxesHTML;
+    
     currentCheckoutTotal = grandTotal;
     document.getElementById('ticket-total').textContent = '€' + grandTotal.toFixed(2);
 }
 
 function clearCart() {
-    cart = {}; updateTicketUI();
+    cart = {};
+    updateTicketUI();
     const disp = document.getElementById('price-display');
     disp.className = 'price-screen idle';
     document.getElementById('display-name').textContent = t('scan_start');
@@ -613,7 +656,7 @@ function clearCart() {
     document.getElementById('barcode-input').focus();
 }
 
-// --- MODALES DE COBRO Y EDICIÓN ---
+// --- MODAL DE COBRO (NUEVO) ---
 function closeAllModals() {
     document.querySelectorAll('.modal-overlay, .modal').forEach(el => el.classList.remove('active'));
     document.getElementById('barcode-input').focus();
@@ -623,7 +666,6 @@ function checkout() {
     if (Object.keys(cart).length === 0) {
         alert(t('alert_empty')); return;
     }
-    
     document.getElementById('checkout-total-val').textContent = '€' + currentCheckoutTotal.toFixed(2);
     document.getElementById('checkout-given').value = '';
     document.getElementById('checkout-change-val').textContent = '€0.00';
@@ -653,21 +695,28 @@ function confirmPayment() {
     if (given < currentCheckoutTotal) {
         const changeContainer = document.getElementById('checkout-change-container');
         changeContainer.style.animation = 'none';
-        setTimeout(() => { changeContainer.style.color = '#a32d2d'; setTimeout(() => changeContainer.style.color = '', 500); }, 10);
+        setTimeout(() => {
+            changeContainer.style.color = '#a32d2d';
+            setTimeout(() => changeContainer.style.color = '', 500);
+        }, 10);
         return; 
     }
     
-    alert(`${t('checkout_success')} €${currentCheckoutTotal.toFixed(2)}`);
-    closeAllModals(); clearCart();
+    closeAllModals();
+    clearCart();
 }
 
+// Atajos de teclado
 window.addEventListener('keydown', function(e) {
     const modalsActive = document.querySelector('.modal.active');
-    if (!modalsActive && (e.key === 'F2' || e.key === 'PageDown')) { e.preventDefault(); checkout(); }
+    if (!modalsActive && (e.key === 'F2' || e.key === 'PageDown')) {
+        e.preventDefault();
+        checkout();
+    }
     if (modalsActive && e.key === 'Escape') closeAllModals();
 });
 
-// --- INVENTARIO LÓGICA ---
+// --- INVENTARIO (CON EDICIÓN AÑADIDA) ---
 let currentEditIndex = -1;
 
 function renderInventory() {
@@ -694,7 +743,7 @@ function renderInventory() {
       <td>${promoHTML}</td>
       <td style="text-align:right; min-width:85px;">
         <button class="primary" style="padding: 4px 8px; margin-right: 4px;" onclick="openEditModal(${i})" title="Editar">✎</button>
-        <button class="danger" style="padding: 4px 8px;" onclick="deleteProduct(${i})" title="Eliminar">✕</button>
+        <button class="danger" style="padding: 4px 8px;" onclick="deleteProduct(${i})">✕</button>
       </td>
     </tr>`;
   });
@@ -719,13 +768,16 @@ function openEditModal(index) {
 
 function saveEditProduct() {
     if (currentEditIndex === -1) return;
+
     const name = document.getElementById('edit-name').value.trim();
     const price = parseFloat(document.getElementById('edit-price').value);
     const cat = document.getElementById('edit-cat').value;
     const promoQty = parseInt(document.getElementById('edit-promo-qty').value);
     const promoPrice = parseFloat(document.getElementById('edit-promo-price').value);
 
-    if (!name || isNaN(price) || price < 0) { alert(t('alert_req')); return; }
+    if (!name || isNaN(price) || price < 0) {
+        alert(t('alert_req')); return;
+    }
 
     inventory[currentEditIndex].name = name;
     inventory[currentEditIndex].price = price;
@@ -733,98 +785,153 @@ function saveEditProduct() {
     
     if (!isNaN(promoQty) && promoQty > 1 && !isNaN(promoPrice) && promoPrice > 0) {
         inventory[currentEditIndex].promo = { qty: promoQty, price: promoPrice };
-    } else delete inventory[currentEditIndex].promo;
+    } else {
+        delete inventory[currentEditIndex].promo;
+    }
 
-    saveInventory(); renderInventory(); renderSampleCodes(); closeAllModals();
+    saveInventory();
+    renderInventory();
+    renderSampleCodes();
+    closeAllModals();
 }
 
 function deleteProduct(index) {
   if(confirm(t('alert_del_prod'))) {
       inventory.splice(index, 1);
-      saveInventory(); renderInventory(); renderSampleCodes();
+      saveInventory(); 
+      renderInventory();
+      renderSampleCodes();
   }
 }
 
+// 1. Exportar a CSV (LÓGICA ORIGINAL INTACTA)
 function exportToCSV() {
     let csvContent = "data:text/csv;charset=utf-8,Codigo,Nombre,Precio,Categoria,PromoCantidad,PromoPrecio\n";
+    
     inventory.forEach(p => {
         const safeName = p.name.replace(/,/g, ' '); 
         const pQty = p.promo ? p.promo.qty : '';
         const pPrice = p.promo ? p.promo.price : '';
         csvContent += `${p.code},${safeName},${p.price},${p.cat},${pQty},${pPrice}\n`;
     });
+
+    const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csvContent));
+    link.setAttribute("href", encodedUri);
     link.setAttribute("download", "inventario_supermercado.csv");
-    document.body.appendChild(link); link.click(); document.body.removeChild(link);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
+// 2. Importar de CSV (LÓGICA ORIGINAL INTACTA)
 function importFromCSV(event) {
     const file = event.target.files[0];
     if (!file) return;
+
     const reader = new FileReader();
     reader.onload = function(e) {
-        const rows = e.target.result.split("\n").slice(1);
+        const content = e.target.result;
+        const rows = content.split("\n").slice(1);
+        
         let newInventory = [];
         rows.forEach(row => {
             if (!row.trim()) return;
             const cols = row.split(",");
             if (cols.length >= 3) {
-                let item = { code: cols[0].trim(), name: cols[1].trim(), price: parseFloat(cols[2]), cat: cols[3] ? cols[3].trim() : 'other' };
+                let item = {
+                    code: cols[0].trim(),
+                    name: cols[1].trim(),
+                    price: parseFloat(cols[2]),
+                    cat: cols[3] ? cols[3].trim() : 'other'
+                };
+                
                 if (cols[4] && cols[5]) {
-                    const pq = parseInt(cols[4]); const pp = parseFloat(cols[5]);
-                    if (!isNaN(pq) && !isNaN(pp)) item.promo = { qty: pq, price: pp };
+                    const promoQty = parseInt(cols[4]);
+                    const promoPrice = parseFloat(cols[5]);
+                    if (!isNaN(promoQty) && !isNaN(promoPrice)) {
+                        item.promo = { qty: promoQty, price: promoPrice };
+                    }
                 }
                 newInventory.push(item);
             }
         });
-        if (confirm(`Cargar ${newInventory.length} productos?`)) {
-            inventory = newInventory; saveInventory(); applyLanguage(); renderSampleCodes(); event.target.value = '';
+
+        if (confirm(`¿Cargar ${newInventory.length} productos? Esto reemplazará tu inventario actual.`)) {
+            inventory = newInventory;
+            saveInventory();
+            renderInventory();
+            renderSampleCodes();
+            event.target.value = '';
         }
     };
     reader.readAsText(file);
 }
 
+// --- AGREGAR PRODUCTO ---
 function addProduct() {
   const code  = document.getElementById('new-code').value.trim();
   const name  = document.getElementById('new-name').value.trim();
   const price = parseFloat(document.getElementById('new-price').value);
   const cat   = document.getElementById('new-cat').value;
+  
   const promoQty = parseInt(document.getElementById('new-promo-qty').value);
   const promoPrice = parseFloat(document.getElementById('new-promo-price').value);
   const msg   = document.getElementById('add-msg');
 
-  if (!code || !name || isNaN(price) || price < 0) { msg.innerHTML = `<span style="color:#a32d2d;">${t('alert_req')}</span>`; return; }
-  if (inventory.find(p => p.code === code)) { msg.innerHTML = `<span style="color:#a32d2d;">${t('alert_exist')}</span>`; return; }
+  if (!code || !name || isNaN(price) || price < 0) {
+    msg.innerHTML = `<span style="color:#a32d2d;">${t('alert_req')}</span>`;
+    return;
+  }
+  if (inventory.find(p => p.code === code)) {
+    msg.innerHTML = `<span style="color:#a32d2d;">${t('alert_exist')}</span>`;
+    return;
+  }
 
   let newProduct = { code, name, price, cat };
-  if (!isNaN(promoQty) && promoQty > 1 && !isNaN(promoPrice) && promoPrice > 0) newProduct.promo = { qty: promoQty, price: promoPrice };
+  if (!isNaN(promoQty) && promoQty > 1 && !isNaN(promoPrice) && promoPrice > 0) {
+      newProduct.promo = { qty: promoQty, price: promoPrice };
+  }
 
-  inventory.push(newProduct); saveInventory(); 
+  inventory.push(newProduct);
+  saveInventory(); 
+
   msg.innerHTML = `<span style="color:#3B6D11;">${t('msg_added')}</span>`;
   
-  ['new-code', 'new-name', 'new-price', 'new-promo-qty', 'new-promo-price'].forEach(id => document.getElementById(id).value = '');
-  setTimeout(() => msg.innerHTML = '', 3500); renderSampleCodes(); applyLanguage();
+  document.getElementById('new-code').value  = '';
+  document.getElementById('new-name').value  = '';
+  document.getElementById('new-price').value = '';
+  document.getElementById('new-promo-qty').value = '';
+  document.getElementById('new-promo-price').value = '';
+  
+  setTimeout(() => msg.innerHTML = '', 3500);
+  renderSampleCodes();
 }
 
+// --- BOTONES RÁPIDOS DE PRUEBA ---
 function renderSampleCodes() {
   const container = document.getElementById('sample-codes-container');
-  if (!container) return; container.innerHTML = '';
+  if (!container) return;
+  container.innerHTML = '';
   inventory.slice(0, 6).forEach(p => {
     const btn = document.createElement('button');
     btn.textContent = p.name + (p.promo ? ' 🎁' : '');
     btn.title = `Código: ${p.code}`;
-    btn.onclick = () => { document.getElementById('barcode-input').value = p.code; searchBarcode(); };
+    btn.onclick = () => {
+      document.getElementById('barcode-input').value = p.code;
+      searchBarcode();
+    };
     container.appendChild(btn);
   });
 }
 
-// Inicialización de Idioma y Componentes
+// Iniciar app
 applyLanguage();
-renderSampleCodes();
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.log('SW error', err));
+  });
 }
 </script>
 </body>

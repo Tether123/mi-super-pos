@@ -50,13 +50,19 @@
     .ticket-container { border: 1px solid rgba(0,0,0,0.1); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; }
     .ticket-header { background: #f9f9f9; padding: 10px 15px; font-weight: 600; font-size: 14px; border-bottom: 1px solid rgba(0,0,0,0.1); text-align: center; }
     .ticket-body { padding: 10px; flex: 1; min-height: 200px; max-height: 300px; overflow-y: auto; }
-    .ticket-item { display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; border-bottom: 1px dashed rgba(0,0,0,0.1); }
+    .ticket-item { display: flex; justify-content: space-between; align-items: flex-start; font-size: 13px; padding: 8px 0; border-bottom: 1px dashed rgba(0,0,0,0.1); }
     .ticket-item:last-child { border-bottom: none; }
     .item-qty { font-weight: 600; width: 25px; display: inline-block; }
     .item-details { flex: 1; }
-    .item-promo-note { font-size: 11px; color: #3B6D11; display: block; margin-top: 2px; }
-    .item-total { font-weight: 600; }
+    .item-promo-note { font-size: 11px; color: #3B6D11; display: block; margin-top: 4px; }
+    .item-total { font-weight: 600; margin-top: 2px;}
     
+    /* BOTONES DE EDICIÓN DEL TICKET */
+    .ticket-ctrl-btn { background: #f0f0f0; border: 1px solid rgba(0,0,0,0.1); border-radius: 4px; width: 22px; height: 22px; padding: 0; font-size: 14px; display: inline-flex; justify-content: center; align-items: center; cursor: pointer; color: #333; line-height: 1; }
+    .ticket-ctrl-btn:hover { background: #e4e4e4; }
+    .ticket-ctrl-btn.del { background: #fcebeb; border-color: #f5c6c6; color: #a32d2d; }
+    .ticket-ctrl-btn.del:hover { background: #f8dada; }
+
     .ticket-footer { background: #1a1a18; color: #fff; padding: 15px; display: flex; flex-direction: column; gap: 4px; }
     .ticket-footer-row { display: flex; justify-content: space-between; font-size: 12px; color: #bbb; }
     .ticket-total-row { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid rgba(255,255,255,0.2); padding-top: 8px; margin-top: 4px; color: #fff; }
@@ -187,7 +193,7 @@
       </label>
     </div>
     
-    <!-- NUEVO: BUSCADOR DE INVENTARIO -->
+    <!-- BUSCADOR DE INVENTARIO -->
     <div class="search-row" style="margin-bottom: 15px;">
       <input type="text" id="inventory-search" data-i18n="placeholder_search" placeholder="Buscar por nombre o código..." oninput="filterInventory()" />
     </div>
@@ -404,7 +410,7 @@ function applyLanguage() {
     document.getElementById('lang-toggle-btn').innerHTML = dict[currentLang].lang_btn;
     
     renderConfig();
-    filterInventory(); // Renderiza el inventario aplicando el idioma
+    filterInventory(); 
     updateTicketUI();
     
     if(Object.keys(cart).length === 0) {
@@ -418,7 +424,7 @@ function toggleLanguage() {
     applyLanguage();
 }
 
-// --- SISTEMA DINÁMICO DE CATEGORÍAS (NUNCA SE TRADUCEN) ---
+// --- SISTEMA DINÁMICO DE CATEGORÍAS ---
 const DEFAULT_CATEGORIES = {
   food: 'Alimento',
   drink: 'Bebida',
@@ -556,7 +562,7 @@ function showTab(name) {
   }
 }
 
-// --- LÓGICA DE CAJA (ESCÁNER Y TICKET) ---
+// --- LÓGICA DE CAJA (ESCÁNER, TICKET Y EDICIÓN DE TICKET) ---
 function searchBarcode() {
   const input = document.getElementById('barcode-input');
   const code = input.value.trim();
@@ -611,6 +617,23 @@ function addToCart(product) {
     updateTicketUI();
 }
 
+// Edición de un artículo en el ticket (Sumar/Restar)
+function changeCartQty(code, delta) {
+    if (!cart[code]) return;
+    cart[code].qty += delta;
+    if (cart[code].qty <= 0) {
+        delete cart[code];
+    }
+    updateTicketUI();
+}
+
+// Eliminar directamente del ticket
+function removeCartItem(code) {
+    if (!cart[code]) return;
+    delete cart[code];
+    updateTicketUI();
+}
+
 function updateTicketUI() {
     const tbody = document.getElementById('ticket-body');
     let grandTotal = 0;
@@ -658,10 +681,19 @@ function updateTicketUI() {
         if (!taxesBreakdown[taxRate]) taxesBreakdown[taxRate] = 0;
         taxesBreakdown[taxRate] += itemTaxAmount;
 
+        // Html del producto en el ticket con controles de edición integrados
         html += `
         <div class="ticket-item">
             <div class="item-details">
-                <span class="item-qty">${q}x</span> ${p.name}
+                <div style="display:flex; align-items:center; gap:6px;">
+                   <span class="item-qty">${q}x</span> 
+                   <span>${p.name}</span>
+                </div>
+                <div style="display:flex; gap:4px; margin-top:6px; margin-bottom: 2px;">
+                   <button class="ticket-ctrl-btn" onclick="changeCartQty('${code}', -1)" title="Restar">-</button>
+                   <button class="ticket-ctrl-btn" onclick="changeCartQty('${code}', 1)" title="Sumar">+</button>
+                   <button class="ticket-ctrl-btn del" onclick="removeCartItem('${code}')" title="Eliminar del ticket">✕</button>
+                </div>
                 ${promoText}
             </div>
             <div class="item-total">€${subtotal.toFixed(2)}</div>
@@ -760,7 +792,7 @@ window.addEventListener('keydown', function(e) {
 });
 
 // --- INVENTARIO: BUSCADOR Y EDICIÓN ---
-let currentEditCode = null; // AHORA BUSCAMOS POR CÓDIGO, NO POR ÍNDICE
+let currentEditCode = null;
 
 function filterInventory() {
     const searchTerm = document.getElementById('inventory-search').value.toLowerCase();

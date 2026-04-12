@@ -99,12 +99,20 @@
     .checkout-change.negative { color: #a32d2d; font-size: 20px; }
     .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
     .modal-actions button { flex: 1; padding: 12px; font-size: 15px; }
+
+    /* Estilos del traductor de Google para que no rompa el diseño */
+    .goog-te-gadget { font-size: 13px !important; font-weight: 400 !important; color: #666 !important; }
+    .goog-te-gadget .goog-te-combo { border-radius: 6px; padding: 4px; border: 1px solid rgba(0,0,0,0.15); outline: none; }
+    .skiptranslate iframe { display: none; } /* Oculta la barra superior de Google */
+    body { top: 0px !important; }
   </style>
 </head>
 <body>
 <div class="app">
   <h1>
-    Supermercado POS
+    <span>Supermercado POS</span>
+    <!-- WIDGET DE TRADUCCIÓN -->
+    <div id="google_translate_element"></div>
   </h1>
 
   <div class="tabs">
@@ -320,6 +328,18 @@
   </div>
 </div>
 
+<!-- SCRIPT DE GOOGLE TRANSLATE -->
+<script type="text/javascript">
+  function googleTranslateElementInit() {
+    new google.translate.TranslateElement({
+      pageLanguage: 'es', 
+      layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
+      autoDisplay: false
+    }, 'google_translate_element');
+  }
+</script>
+<script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
 <script>
 // --- DICCIONARIO DE CATEGORÍAS ---
 const CAT_NAMES = {
@@ -398,7 +418,7 @@ function restoreDefaults() {
 
 // Carrito
 let cart = {}; 
-let currentCheckoutTotal = 0; // Guardará el número total real de la compra
+let currentCheckoutTotal = 0; 
 
 // --- NAVEGACIÓN ---
 function showTab(name) {
@@ -586,7 +606,6 @@ function checkout() {
     document.getElementById('modal-overlay').classList.add('active');
     document.getElementById('checkout-modal').classList.add('active');
     
-    // Enfocar input tras abrir modal
     setTimeout(() => document.getElementById('checkout-given').focus(), 50);
 }
 
@@ -607,7 +626,6 @@ function calculateChange() {
 function confirmPayment() {
     const given = parseFloat(document.getElementById('checkout-given').value) || 0;
     if (given < currentCheckoutTotal) {
-        // Hacemos parpadear el texto en rojo
         const changeContainer = document.getElementById('checkout-change-container');
         changeContainer.style.animation = 'none';
         setTimeout(() => {
@@ -617,7 +635,6 @@ function confirmPayment() {
         return; 
     }
     
-    // Pago completado con éxito
     closeAllModals();
     clearCart();
 }

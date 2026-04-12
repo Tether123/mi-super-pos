@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Caja y Inventario — Persistente con IVA</title>
+  <title>Caja e Inventario</title>
   <link rel="manifest" href="manifest.json">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -11,6 +11,9 @@
     .app { max-width: 800px; margin: 0 auto; background: #fff; border-radius: 16px; border: 1px solid rgba(0,0,0,0.08); padding: 1.5rem; box-shadow: 0 4px 20px rgba(0,0,0,0.05); position: relative;}
     h1 { font-size: 20px; font-weight: 600; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;}
     
+    .lang-btn { font-size: 14px; font-weight: 600; background: #f5f5f3; border: 1px solid rgba(0,0,0,0.1); padding: 6px 12px; border-radius: 8px; cursor: pointer; transition: 0.2s; }
+    .lang-btn:hover { background: #eaeaea; }
+
     .tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 1.5rem; border-bottom: 1px solid rgba(0,0,0,0.08); }
     .tab { padding: 10px 16px; font-size: 14px; cursor: pointer; border: none; background: none; color: #666; border-bottom: 2px solid transparent; transition: all 0.15s; }
     .tab.active { color: #1a1a18; border-bottom: 2px solid #1a1a18; font-weight: 600; }
@@ -93,33 +96,25 @@
     .modal.active { display: block; }
     .modal h2 { font-size: 18px; margin-bottom: 1rem; border-bottom: 1px solid #eee; padding-bottom: 10px; }
     
-    /* Checkout Modal Specs */
     .checkout-total { font-size: 20px; font-weight: 600; margin-bottom: 15px; text-align: center; padding: 10px; background: #f9f9f9; border-radius: 8px;}
     .checkout-change { font-size: 28px; font-weight: 700; margin-top: 15px; color: #3B6D11; text-align: center; }
     .checkout-change.negative { color: #a32d2d; font-size: 20px; }
     .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
     .modal-actions button { flex: 1; padding: 12px; font-size: 15px; }
-
-    /* Estilos del traductor de Google para que no rompa el diseño */
-    .goog-te-gadget { font-size: 13px !important; font-weight: 400 !important; color: #666 !important; }
-    .goog-te-gadget .goog-te-combo { border-radius: 6px; padding: 4px; border: 1px solid rgba(0,0,0,0.15); outline: none; }
-    .skiptranslate iframe { display: none; } /* Oculta la barra superior de Google */
-    body { top: 0px !important; }
   </style>
 </head>
 <body>
 <div class="app">
   <h1>
-    <span>Supermercado POS</span>
-    <!-- WIDGET DE TRADUCCIÓN -->
-    <div id="google_translate_element"></div>
+    <span data-i18n="title">Supermercado POS</span>
+    <button class="lang-btn" id="lang-toggle-btn" onclick="toggleLanguage()">🇨🇳 中文</button>
   </h1>
 
   <div class="tabs">
-    <button class="tab active" onclick="showTab('scanner')">Caja (Escáner)</button>
-    <button class="tab" onclick="showTab('inventory')">Inventario</button>
-    <button class="tab" onclick="showTab('add')">Agregar producto</button>
-    <button class="tab" onclick="showTab('config')">Configuración (IVA)</button>
+    <button class="tab active" onclick="showTab('scanner')" data-i18n="tab_scanner">Caja (Escáner)</button>
+    <button class="tab" onclick="showTab('inventory')" data-i18n="tab_inventory">Inventario</button>
+    <button class="tab" onclick="showTab('add')" data-i18n="tab_add">Agregar producto</button>
+    <button class="tab" onclick="showTab('config')" data-i18n="tab_config">Configuración (IVA)</button>
   </div>
 
   <!-- CAJA (ESCÁNER) -->
@@ -129,47 +124,45 @@
       <!-- Lado Izquierdo: Escáner -->
       <div class="scanner-section">
         <div class="price-screen idle" id="price-display">
-          <div class="product-name" id="display-name">Escanea un código para empezar</div>
+          <div class="product-name" id="display-name" data-i18n="scan_start">Escanea un código para empezar</div>
           <div class="price-value" id="display-price">—</div>
           <div class="price-tax-note" id="display-tax"></div>
         </div>
         
         <div class="search-row">
-          <input type="text" id="barcode-input" placeholder="Código de barras o '1.'..." maxlength="20"
+          <input type="text" id="barcode-input" data-i18n="placeholder_barcode" placeholder="Código de barras o '1.'..." maxlength="20"
             onkeydown="if(event.key==='Enter') searchBarcode()" autofocus />
-          <button class="primary" onclick="searchBarcode()">Añadir</button>
+          <button class="primary" onclick="searchBarcode()" data-i18n="btn_add">Añadir</button>
         </div>
-        <p style="font-size: 12px; color: #999; margin-bottom: 1.5rem;">Presiona Enter para escanear. <b>Truco:</b> Escribe un precio con punto (Ej: <code>1.</code> o <code>2.50</code>) para cobro manual.</p>
+        <p style="font-size: 12px; color: #999; margin-bottom: 1.5rem;" data-i18n="hint_scan">Presiona Enter para escanear. <b>Truco:</b> Escribe un precio con punto (Ej: <code>1.</code> o <code>2.50</code>) para cobro manual.</p>
         
-        <p class="section-title">Códigos de prueba rápidos</p>
+        <p class="section-title" data-i18n="quick_codes">Códigos de prueba rápidos</p>
         <div class="sample-codes" id="sample-codes-container"></div>
       </div>
 
       <!-- Lado Derecho: Ticket -->
       <div class="ticket-container">
-        <div class="ticket-header">Ticket de Compra</div>
+        <div class="ticket-header" data-i18n="ticket_header">Ticket de Compra</div>
         <div class="ticket-body" id="ticket-body">
-          <div style="text-align: center; color: #999; font-size: 13px; margin-top: 2rem;">El carrito está vacío</div>
+          <div style="text-align: center; color: #999; font-size: 13px; margin-top: 2rem;" data-i18n="empty_cart">El carrito está vacío</div>
         </div>
         
-        <!-- FOOTER DEL TICKET (CON IVA) -->
+        <!-- FOOTER DEL TICKET -->
         <div class="ticket-footer">
           <div class="ticket-footer-row">
-            <span>Base Imponible</span>
+            <span data-i18n="base_tax">Base Imponible</span>
             <span id="ticket-subtotal">€0.00</span>
           </div>
-          <div id="ticket-taxes-container">
-            <!-- Los desgloses de IVA se inyectan aquí -->
-          </div>
+          <div id="ticket-taxes-container"></div>
           <div class="ticket-total-row">
-            <span class="ticket-total-label">TOTAL (IVA inc.)</span>
+            <span class="ticket-total-label" data-i18n="total_tax">TOTAL (IVA inc.)</span>
             <span class="ticket-total-value" id="ticket-total">€0.00</span>
           </div>
         </div>
 
         <div class="ticket-actions">
-          <button class="danger" onclick="clearCart()">Vaciar</button>
-          <button class="primary" onclick="checkout()">Cobrar (F2)</button>
+          <button class="danger" onclick="clearCart()" data-i18n="btn_empty">Vaciar</button>
+          <button class="primary" onclick="checkout()" data-i18n="btn_checkout">Cobrar (F2)</button>
         </div>
       </div>
 
@@ -179,14 +172,14 @@
   <!-- INVENTARIO -->
   <div class="panel" id="panel-inventory">
     <div class="section-title">
-      <span>Productos en inventario (<span id="inv-count">0</span>)</span>
-      <button class="small-text" onclick="restoreDefaults()">Restaurar datos de fábrica</button>
+      <span><span data-i18n="inv_title">Productos en inventario</span> (<span id="inv-count">0</span>)</span>
+      <button class="small-text" onclick="restoreDefaults()" data-i18n="inv_restore">Restaurar datos de fábrica</button>
     </div>
 
     <div style="margin-top: 10px; margin-bottom: 15px; display: flex; gap: 10px;">
-      <button onclick="exportToCSV()">Descargar copia (CSV)</button>
+      <button onclick="exportToCSV()" data-i18n="inv_download">Descargar copia (CSV)</button>
       <label class="button" style="cursor:pointer; padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; background: #fff;">
-        Subir desde PC (CSV)
+        <span data-i18n="inv_upload">Subir desde PC (CSV)</span>
         <input type="file" accept=".csv" onchange="importFromCSV(event)" style="display:none;">
       </label>
     </div>
@@ -196,74 +189,71 @@
 
   <!-- AGREGAR PRODUCTO -->
   <div class="panel" id="panel-add">
-    <p class="section-title">Nuevo producto</p>
+    <p class="section-title" data-i18n="add_title">Nuevo producto</p>
     <div class="form-grid">
       <div class="form-field">
-        <label>Código de barras *</label>
-        <input type="text" id="new-code" placeholder="ej. 7501234567890" style="font-family:monospace;" />
+        <label data-i18n="add_code">Código de barras *</label>
+        <input type="text" id="new-code" style="font-family:monospace;" />
       </div>
       <div class="form-field">
-        <label>Nombre del producto *</label>
-        <input type="text" id="new-name" placeholder="ej. Leche entera 1L" />
+        <label data-i18n="add_name">Nombre del producto *</label>
+        <input type="text" id="new-name" />
       </div>
       <div class="form-field">
-        <label>Precio final con IVA (€) *</label>
+        <label data-i18n="add_price">Precio final con IVA (€) *</label>
         <input type="number" id="new-price" placeholder="0.00" step="0.01" min="0" />
       </div>
       <div class="form-field">
-        <label>Categoría</label>
+        <label data-i18n="add_cat">Categoría</label>
         <select id="new-cat">
-          <option value="food">Alimento</option>
-          <option value="drink">Bebida</option>
-          <option value="snack">Snack</option>
-          <option value="clean">Limpieza</option>
-          <option value="other">Otro</option>
+          <option value="food" data-i18n="cat_food">Alimento</option>
+          <option value="drink" data-i18n="cat_drink">Bebida</option>
+          <option value="snack" data-i18n="cat_snack">Snack</option>
+          <option value="clean" data-i18n="cat_clean">Limpieza</option>
+          <option value="other" data-i18n="cat_other">Otro</option>
         </select>
       </div>
     </div>
 
     <div class="promo-box">
-      <h4>Oferta por volumen (Opcional)</h4>
+      <h4 data-i18n="add_promo_title">Oferta por volumen (Opcional)</h4>
       <div class="form-grid" style="margin-bottom: 0;">
         <div class="form-field">
-          <label>Cantidad mínima</label>
-          <input type="number" id="new-promo-qty" placeholder="Ej: 3" min="2" />
+          <label data-i18n="add_promo_qty">Cantidad mínima</label>
+          <input type="number" id="new-promo-qty" min="2" />
         </div>
         <div class="form-field">
-          <label>Precio total oferta (€)</label>
-          <input type="number" id="new-promo-price" placeholder="Ej: 2.00" step="0.01" min="0" />
+          <label data-i18n="add_promo_price">Precio total oferta (€)</label>
+          <input type="number" id="new-promo-price" step="0.01" min="0" />
         </div>
       </div>
     </div>
 
-    <button class="primary" style="width: 100%;" onclick="addProduct()">Agregar al inventario</button>
+    <button class="primary" style="width: 100%;" onclick="addProduct()" data-i18n="btn_add_product">Agregar al inventario</button>
     <div id="add-msg" style="text-align: center; margin-top: 10px; font-size: 14px;"></div>
   </div>
 
   <!-- CONFIGURACIÓN DE IVA -->
   <div class="panel" id="panel-config">
-    <p class="section-title">Impuestos por Categoría (% IVA)</p>
-    <p style="font-size: 13px; color: #666; margin-bottom: 15px;">Define el porcentaje de IVA aplicado a cada tipo de producto. Los precios de tu inventario ya incluyen el IVA, este panel permite desglosarlo correctamente en el ticket.</p>
+    <p class="section-title" data-i18n="config_title">Impuestos por Categoría (% IVA)</p>
+    <p style="font-size: 13px; color: #666; margin-bottom: 15px;" data-i18n="config_desc">Define el porcentaje de IVA aplicado a cada tipo de producto. Los precios de tu inventario ya incluyen el IVA, este panel permite desglosarlo correctamente en el ticket.</p>
     
-    <div class="form-grid" id="tax-config-grid">
-      <!-- Los inputs de IVA se inyectan aquí -->
-    </div>
+    <div class="form-grid" id="tax-config-grid"></div>
     
-    <button class="primary" onclick="saveTaxConfig()">Guardar Impuestos</button>
+    <button class="primary" onclick="saveTaxConfig()" data-i18n="btn_save_tax">Guardar Impuestos</button>
     <div id="config-msg" style="text-align: left; display: inline-block; margin-left: 10px; font-size: 14px;"></div>
   </div>
 </div>
 
-<!-- ================= MODALES ================= -->
+<!-- MODALES -->
 <div id="modal-overlay" class="modal-overlay" onclick="closeAllModals()"></div>
 
-<!-- MODAL VENTANILLA DE COBRO -->
 <div id="checkout-modal" class="modal">
-  <h2>Ventanilla de Cobro</h2>
-  <div class="checkout-total">Total a pagar: <span id="checkout-total-val">€0.00</span></div>
+  <h2 data-i18n="checkout_title">Ventanilla de Cobro</h2>
+  <div class="checkout-total"><span data-i18n="checkout_total">Total a pagar:</span> <span id="checkout-total-val">€0.00</span></div>
   
   <div class="form-field" style="margin-top: 15px;">
-    <label style="font-size: 14px; font-weight: 600; color:#1a1a18;">Efectivo recibido (€)</label>
+    <label style="font-size: 14px; font-weight: 600; color:#1a1a18;" data-i18n="checkout_given">Efectivo recibido (€)</label>
     <input type="number" id="checkout-given" placeholder="0.00" step="0.01" min="0" 
            style="font-size: 20px; padding: 12px; font-weight: bold; text-align:center;" 
            oninput="calculateChange()" 
@@ -271,93 +261,157 @@
   </div>
   
   <div class="checkout-change" id="checkout-change-container">
-    Cambio: <span id="checkout-change-val">€0.00</span>
+    <span data-i18n="checkout_change">Cambio:</span> <span id="checkout-change-val">€0.00</span>
   </div>
 
   <div class="modal-actions">
-    <button class="danger" onclick="closeAllModals()">Cancelar</button>
-    <button class="primary" onclick="confirmPayment()">Confirmar (Enter)</button>
+    <button class="danger" onclick="closeAllModals()" data-i18n="btn_cancel">Cancelar</button>
+    <button class="primary" onclick="confirmPayment()" data-i18n="btn_confirm">Confirmar (Enter)</button>
   </div>
 </div>
 
-<!-- MODAL EDITAR PRODUCTO -->
 <div id="edit-modal" class="modal">
-  <h2>Editar Producto</h2>
+  <h2 data-i18n="edit_title">Editar Producto</h2>
   <div class="form-grid">
     <div class="form-field">
-      <label>Código de barras</label>
+      <label data-i18n="add_code">Código de barras</label>
       <input type="text" id="edit-code" style="font-family:monospace; background: #f5f5f5;" readonly />
     </div>
     <div class="form-field">
-      <label>Nombre del producto</label>
+      <label data-i18n="add_name">Nombre del producto</label>
       <input type="text" id="edit-name" />
     </div>
     <div class="form-field">
-      <label>Precio final con IVA (€)</label>
+      <label data-i18n="add_price">Precio final con IVA (€)</label>
       <input type="number" id="edit-price" step="0.01" min="0" />
     </div>
     <div class="form-field">
-      <label>Categoría</label>
+      <label data-i18n="add_cat">Categoría</label>
       <select id="edit-cat">
-        <option value="food">Alimento</option>
-        <option value="drink">Bebida</option>
-        <option value="snack">Snack</option>
-        <option value="clean">Limpieza</option>
-        <option value="other">Otro</option>
+        <option value="food" data-i18n="cat_food">Alimento</option>
+        <option value="drink" data-i18n="cat_drink">Bebida</option>
+        <option value="snack" data-i18n="cat_snack">Snack</option>
+        <option value="clean" data-i18n="cat_clean">Limpieza</option>
+        <option value="other" data-i18n="cat_other">Otro</option>
       </select>
     </div>
   </div>
 
   <div class="promo-box" style="margin-top: 10px;">
-    <h4>Oferta por volumen</h4>
+    <h4 data-i18n="add_promo_title">Oferta por volumen</h4>
     <div class="form-grid" style="margin-bottom: 0;">
       <div class="form-field">
-        <label>Cantidad mínima</label>
+        <label data-i18n="add_promo_qty">Cantidad mínima</label>
         <input type="number" id="edit-promo-qty" min="2" />
       </div>
       <div class="form-field">
-        <label>Precio oferta (€)</label>
+        <label data-i18n="add_promo_price">Precio oferta (€)</label>
         <input type="number" id="edit-promo-price" step="0.01" min="0" />
       </div>
     </div>
   </div>
 
   <div class="modal-actions">
-    <button class="danger" onclick="closeAllModals()">Cancelar</button>
-    <button class="primary" onclick="saveEditProduct()">Guardar Cambios</button>
+    <button class="danger" onclick="closeAllModals()" data-i18n="btn_cancel">Cancelar</button>
+    <button class="primary" onclick="saveEditProduct()" data-i18n="btn_save_edit">Guardar Cambios</button>
   </div>
 </div>
 
-<!-- SCRIPT DE GOOGLE TRANSLATE -->
-<script type="text/javascript">
-  function googleTranslateElementInit() {
-    new google.translate.TranslateElement({
-      pageLanguage: 'es', 
-      layout: google.translate.TranslateElement.InlineLayout.SIMPLE,
-      autoDisplay: false
-    }, 'google_translate_element');
-  }
-</script>
-<script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
-
 <script>
-// --- DICCIONARIO DE CATEGORÍAS ---
-const CAT_NAMES = {
-  food: 'Alimento',
-  drink: 'Bebida',
-  snack: 'Snack',
-  clean: 'Limpieza',
-  other: 'Otro'
+// --- SISTEMA DE TRADUCCIÓN (ESPAÑOL / CHINO) ---
+const dict = {
+  es: {
+    title: "Supermercado POS",
+    tab_scanner: "Caja (Escáner)", tab_inventory: "Inventario", tab_add: "Agregar producto", tab_config: "Configuración (IVA)",
+    scan_start: "Escanea un código para empezar", placeholder_barcode: "Código de barras o '1.'...",
+    btn_add: "Añadir", hint_scan: "Presiona Enter para escanear. <b>Truco:</b> Escribe un precio con punto (Ej: <code>1.</code> o <code>2.50</code>) para cobro manual.",
+    quick_codes: "Códigos de prueba rápidos", ticket_header: "Ticket de Compra", empty_cart: "El carrito está vacío",
+    base_tax: "Base Imponible", total_tax: "TOTAL (IVA inc.)", btn_empty: "Vaciar", btn_checkout: "Cobrar (F2)",
+    inv_title: "Productos en inventario", inv_restore: "Restaurar datos de fábrica", inv_download: "Descargar copia (CSV)", inv_upload: "Subir desde PC (CSV)",
+    add_title: "Nuevo producto", add_code: "Código de barras *", add_name: "Nombre del producto *", add_price: "Precio final con IVA (€) *",
+    add_cat: "Categoría", add_promo_title: "Oferta por volumen (Opcional)", add_promo_qty: "Cantidad mínima", add_promo_price: "Precio total oferta (€)",
+    btn_add_product: "Agregar al inventario", config_title: "Impuestos por Categoría (% IVA)",
+    config_desc: "Define el porcentaje de IVA aplicado a cada tipo de producto. Los precios de tu inventario ya incluyen el IVA, este panel permite desglosarlo correctamente en el ticket.",
+    btn_save_tax: "Guardar Impuestos", checkout_title: "Ventanilla de Cobro", checkout_total: "Total a pagar: ",
+    checkout_given: "Efectivo recibido (€)", checkout_change: "Cambio: ", btn_cancel: "Cancelar", btn_confirm: "Confirmar (Enter)",
+    edit_title: "Editar Producto", btn_save_edit: "Guardar Cambios",
+    lang_btn: "🇨🇳 中文",
+    cat_food: "Alimento", cat_drink: "Bebida", cat_snack: "Snack", cat_clean: "Limpieza", cat_other: "Otro",
+    manual_item: "Artículo manual", not_found: "Código no encontrado", error: "Error",
+    alert_empty: "El carrito está vacío. Escanea productos primero.", alert_missing: "Faltan",
+    alert_del_prod: "¿Eliminar este producto del inventario?", alert_restore: "¿Estás seguro de querer borrar tus productos y volver a los de fábrica?",
+    alert_req: "El nombre y precio son obligatorios y válidos.", alert_exist: "Ese código ya existe.",
+    msg_added: "¡Producto agregado!", msg_tax_saved: "¡IVA guardado con éxito!", checkout_success: "¡Cobro realizado con éxito!\nTotal cobrado: ",
+    lbl_iva: "IVA", lbl_incl: "incl.", lbl_savings: "Ahorras", lbl_offer: "Oferta", lbl_by: "por",
+    th_code: "Código", th_product: "Producto", th_price: "Precio", th_promo: "Oferta", th_actions: "Acciones"
+  },
+  zh: {
+    title: "超市收银系统",
+    tab_scanner: "收银台 (扫描)", tab_inventory: "库存", tab_add: "添加商品", tab_config: "设置 (增值税)",
+    scan_start: "扫描条形码以开始", placeholder_barcode: "条形码或输入 '1.'...",
+    btn_add: "添加", hint_scan: "按回车键扫描。<b>提示：</b>输入带小数点的价格（如 <code>1.</code> 或 <code>2.50</code>）进行手动收费。",
+    quick_codes: "快速测试条形码", ticket_header: "购物小票", empty_cart: "购物车是空的",
+    base_tax: "税前总价", total_tax: "总计 (含税)", btn_empty: "清空", btn_checkout: "结账 (F2)",
+    inv_title: "库存商品", inv_restore: "恢复出厂设置", inv_download: "下载副本 (CSV)", inv_upload: "从电脑上传 (CSV)",
+    add_title: "新商品", add_code: "条形码 *", add_name: "商品名称 *", add_price: "含税最终价格 (€) *",
+    add_cat: "分类", add_promo_title: "批量优惠 (可选)", add_promo_qty: "最低数量", add_promo_price: "优惠总价 (€)",
+    btn_add_product: "添加到库存", config_title: "按类别分类的税率 (% IVA)",
+    config_desc: "定义适用于每类商品的增值税百分比。库存中的价格已包含增值税，此面板可让您在小票上正确显示细目。",
+    btn_save_tax: "保存税率", checkout_title: "结账窗口", checkout_total: "应付总额：",
+    checkout_given: "实收现金 (€)", checkout_change: "找零：", btn_cancel: "取消", btn_confirm: "确认 (Enter)",
+    edit_title: "编辑商品", btn_save_edit: "保存更改",
+    lang_btn: "🇪🇸 Español",
+    cat_food: "食品", cat_drink: "饮料", cat_snack: "零食", cat_clean: "清洁", cat_other: "其他",
+    manual_item: "手动输入商品", not_found: "未找到条形码", error: "错误",
+    alert_empty: "购物车为空。请先扫描商品。", alert_missing: "还差",
+    alert_del_prod: "确定要从库存中删除此商品吗？", alert_restore: "您确定要删除所有商品并恢复出厂设置吗？",
+    alert_req: "名称和价格是必填的有效项。", alert_exist: "该条形码已存在。",
+    msg_added: "商品已添加！", msg_tax_saved: "增值税保存成功！", checkout_success: "结账成功！\n总收取的金额：",
+    lbl_iva: "增值税", lbl_incl: "包含", lbl_savings: "节省", lbl_offer: "优惠", lbl_by: "特价",
+    th_code: "条形码", th_product: "商品", th_price: "价格", th_promo: "优惠", th_actions: "操作"
+  }
 };
 
-// --- IMPUESTOS (IVA) ---
+let currentLang = localStorage.getItem('mi_pos_lang') || 'es';
+
+function t(key) { return dict[currentLang][key] || key; }
+
+function applyLanguage() {
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (dict[currentLang][key]) {
+            if (el.tagName === 'INPUT' && el.hasAttribute('placeholder')) el.placeholder = dict[currentLang][key];
+            else el.innerHTML = dict[currentLang][key];
+        }
+    });
+    
+    document.querySelectorAll('select option').forEach(opt => {
+        if (opt.hasAttribute('data-i18n')) opt.textContent = dict[currentLang][opt.getAttribute('data-i18n')];
+    });
+
+    document.getElementById('lang-toggle-btn').innerHTML = dict[currentLang].lang_btn;
+    
+    renderConfig();
+    renderInventory();
+    updateTicketUI();
+    
+    if(Object.keys(cart).length === 0) {
+        document.getElementById('display-name').textContent = t('scan_start');
+    }
+}
+
+function toggleLanguage() {
+    currentLang = currentLang === 'es' ? 'zh' : 'es';
+    localStorage.setItem('mi_pos_lang', currentLang);
+    applyLanguage();
+}
+
+// --- IMPUESTOS E INVENTARIO ---
 const DEFAULT_TAXES = { food: 10, drink: 21, snack: 21, clean: 21, other: 21 };
 let savedTaxes = localStorage.getItem('mi_supermercado_taxes');
 let taxes = savedTaxes ? JSON.parse(savedTaxes) : JSON.parse(JSON.stringify(DEFAULT_TAXES));
 
-function saveTaxes() {
-    localStorage.setItem('mi_supermercado_taxes', JSON.stringify(taxes));
-}
+function saveTaxes() { localStorage.setItem('mi_supermercado_taxes', JSON.stringify(taxes)); }
 
 function renderConfig() {
     const grid = document.getElementById('tax-config-grid');
@@ -365,7 +419,7 @@ function renderConfig() {
     for (let key in taxes) {
         html += `
           <div class="form-field">
-            <label>${CAT_NAMES[key] || key} (%)</label>
+            <label>${t('cat_'+key)} (%)</label>
             <input type="number" id="tax-input-${key}" value="${taxes[key]}" min="0" max="100" step="0.1">
           </div>
         `;
@@ -383,11 +437,10 @@ function saveTaxConfig() {
     renderInventory(); 
     
     const msg = document.getElementById('config-msg');
-    msg.innerHTML = '<span style="color:#3B6D11;">¡IVA guardado con éxito!</span>';
+    msg.innerHTML = `<span style="color:#3B6D11;">${t('msg_tax_saved')}</span>`;
     setTimeout(() => msg.innerHTML = '', 3000);
 }
 
-// --- DATOS INICIALES DEL INVENTARIO ---
 const DEFAULT_INVENTORY = [
   { code: '8410188070031', name: 'Leche entera 1L',          price: 0.99, cat: 'food', promo: { qty: 6, price: 5.00 } },
   { code: '8410188030035', name: 'Pan de molde 500g',        price: 1.35, cat: 'food' },
@@ -400,27 +453,23 @@ const DEFAULT_INVENTORY = [
 let savedData = localStorage.getItem('mi_supermercado_inventario');
 let inventory = savedData ? JSON.parse(savedData) : JSON.parse(JSON.stringify(DEFAULT_INVENTORY));
 
-function saveInventory() {
-    localStorage.setItem('mi_supermercado_inventario', JSON.stringify(inventory));
-}
+function saveInventory() { localStorage.setItem('mi_supermercado_inventario', JSON.stringify(inventory)); }
 
 function restoreDefaults() {
-    if(confirm('¿Estás seguro de querer borrar tus productos y volver a los de fábrica?')) {
+    if(confirm(t('alert_restore'))) {
         inventory = JSON.parse(JSON.stringify(DEFAULT_INVENTORY));
         taxes = JSON.parse(JSON.stringify(DEFAULT_TAXES));
         saveInventory();
         saveTaxes();
-        renderInventory();
-        renderConfig();
+        applyLanguage();
         renderSampleCodes();
     }
 }
 
-// Carrito
+// --- CARRITO Y NAVEGACIÓN ---
 let cart = {}; 
 let currentCheckoutTotal = 0; 
 
-// --- NAVEGACIÓN ---
 function showTab(name) {
   const names = ['scanner', 'inventory', 'add', 'config'];
   document.querySelectorAll('.tab').forEach((t, i) => t.classList.toggle('active', names[i] === name));
@@ -435,7 +484,6 @@ function showTab(name) {
   }
 }
 
-// --- LÓGICA DE CAJA (ESCÁNER Y TICKET) ---
 function searchBarcode() {
   const input = document.getElementById('barcode-input');
   const code = input.value.trim();
@@ -449,20 +497,18 @@ function searchBarcode() {
       if (manualPrice >= 0) {
           const manualProduct = { 
               code: 'MANUAL_' + manualPrice.toFixed(2), 
-              name: 'Artículo manual', 
+              name: t('manual_item'), 
               price: manualPrice, 
               cat: 'other' 
           };
           
           document.getElementById('display-name').textContent = manualProduct.name;
           document.getElementById('display-price').innerHTML = '<span class="price-currency">€</span>' + manualPrice.toFixed(2);
-          document.getElementById('display-tax').textContent = `(IVA ${taxes['other']}% incl.)`;
+          document.getElementById('display-tax').textContent = `(${taxes['other']}% ${t('lbl_iva')} ${t('lbl_incl')})`;
           disp.classList.add('success');
           
           addToCart(manualProduct);
-          input.value = '';
-          input.focus();
-          return;
+          input.value = ''; input.focus(); return;
       }
   }
 
@@ -472,39 +518,32 @@ function searchBarcode() {
     const taxRate = taxes[product.cat] || 0;
     document.getElementById('display-name').textContent = product.name;
     document.getElementById('display-price').innerHTML = '<span class="price-currency">€</span>' + product.price.toFixed(2);
-    document.getElementById('display-tax').textContent = `(IVA ${taxRate}% incl.)`;
+    document.getElementById('display-tax').textContent = `(${taxRate}% ${t('lbl_iva')} ${t('lbl_incl')})`;
     disp.classList.add('success');
     addToCart(product);
   } else {
-    document.getElementById('display-name').textContent = 'Código no encontrado';
-    document.getElementById('display-price').textContent = 'Error';
+    document.getElementById('display-name').textContent = t('not_found');
+    document.getElementById('display-price').textContent = t('error');
     document.getElementById('display-tax').textContent = '';
     disp.classList.add('error');
   }
 
-  input.value = '';
-  input.focus();
+  input.value = ''; input.focus();
 }
 
 function addToCart(product) {
-    if (cart[product.code]) {
-        cart[product.code].qty += 1;
-    } else {
-        cart[product.code] = { product: product, qty: 1 };
-    }
+    if (cart[product.code]) cart[product.code].qty += 1;
+    else cart[product.code] = { product: product, qty: 1 };
     updateTicketUI();
 }
 
 function updateTicketUI() {
     const tbody = document.getElementById('ticket-body');
-    let grandTotal = 0;
-    let totalBase = 0;
-    let taxesBreakdown = {}; 
-    
+    let grandTotal = 0; let totalBase = 0; let taxesBreakdown = {}; 
     const cartKeys = Object.keys(cart);
     
     if (cartKeys.length === 0) {
-        tbody.innerHTML = '<div style="text-align: center; color: #999; font-size: 13px; margin-top: 2rem;">El carrito está vacío</div>';
+        tbody.innerHTML = `<div style="text-align: center; color: #999; font-size: 13px; margin-top: 2rem;">${t('empty_cart')}</div>`;
         document.getElementById('ticket-subtotal').textContent = '€0.00';
         document.getElementById('ticket-taxes-container').innerHTML = '';
         document.getElementById('ticket-total').textContent = '€0.00';
@@ -513,23 +552,19 @@ function updateTicketUI() {
     }
 
     let html = '';
-
     cartKeys.forEach(code => {
         const item = cart[code];
         const p = item.product;
         const q = item.qty;
         
-        let subtotal = 0;
-        let promoText = '';
+        let subtotal = 0; let promoText = '';
 
         if (p.promo && q >= p.promo.qty) {
             const promoPacks = Math.floor(q / p.promo.qty);
             const remainder = q % p.promo.qty;
-            
             subtotal = (promoPacks * p.promo.price) + (remainder * p.price);
-            const normalPrice = q * p.price;
-            const savings = normalPrice - subtotal;
-            promoText = `<span class="item-promo-note">Oferta (${p.promo.qty}x€${p.promo.price.toFixed(2)}) - Ahorras: €${savings.toFixed(2)}</span>`;
+            const savings = (q * p.price) - subtotal;
+            promoText = `<span class="item-promo-note">${t('lbl_offer')} (${p.promo.qty}x€${p.promo.price.toFixed(2)}) - ${t('lbl_savings')}: €${savings.toFixed(2)}</span>`;
         } else {
             subtotal = q * p.price;
         }
@@ -538,25 +573,19 @@ function updateTicketUI() {
         const itemBase = subtotal / (1 + (taxRate / 100));
         const itemTaxAmount = subtotal - itemBase;
 
-        grandTotal += subtotal;
-        totalBase += itemBase;
-
+        grandTotal += subtotal; totalBase += itemBase;
         if (!taxesBreakdown[taxRate]) taxesBreakdown[taxRate] = 0;
         taxesBreakdown[taxRate] += itemTaxAmount;
 
         html += `
         <div class="ticket-item">
-            <div class="item-details">
-                <span class="item-qty">${q}x</span> ${p.name}
-                ${promoText}
-            </div>
+            <div class="item-details"><span class="item-qty">${q}x</span> ${p.name} ${promoText}</div>
             <div class="item-total">€${subtotal.toFixed(2)}</div>
         </div>`;
     });
 
     tbody.innerHTML = html;
     tbody.scrollTop = tbody.scrollHeight;
-
     document.getElementById('ticket-subtotal').textContent = '€' + totalBase.toFixed(2);
     
     let taxesHTML = '';
@@ -564,29 +593,27 @@ function updateTicketUI() {
         if(taxesBreakdown[rate] > 0 || cartKeys.length > 0) {
             taxesHTML += `
             <div class="ticket-footer-row">
-                <span>IVA (${rate}%)</span>
+                <span>${t('lbl_iva')} (${rate}%)</span>
                 <span>€${taxesBreakdown[rate].toFixed(2)}</span>
             </div>`;
         }
     }
     document.getElementById('ticket-taxes-container').innerHTML = taxesHTML;
-    
     currentCheckoutTotal = grandTotal;
     document.getElementById('ticket-total').textContent = '€' + grandTotal.toFixed(2);
 }
 
 function clearCart() {
-    cart = {};
-    updateTicketUI();
+    cart = {}; updateTicketUI();
     const disp = document.getElementById('price-display');
     disp.className = 'price-screen idle';
-    document.getElementById('display-name').textContent = 'Escanea un código para empezar';
+    document.getElementById('display-name').textContent = t('scan_start');
     document.getElementById('display-price').textContent = '—';
     document.getElementById('display-tax').textContent = '';
     document.getElementById('barcode-input').focus();
 }
 
-// --- LÓGICA DE VENTANILLA DE COBRO (MODALES) ---
+// --- MODALES DE COBRO Y EDICIÓN ---
 function closeAllModals() {
     document.querySelectorAll('.modal-overlay, .modal').forEach(el => el.classList.remove('active'));
     document.getElementById('barcode-input').focus();
@@ -594,8 +621,7 @@ function closeAllModals() {
 
 function checkout() {
     if (Object.keys(cart).length === 0) {
-        alert("El carrito está vacío. Escanea productos primero.");
-        return;
+        alert(t('alert_empty')); return;
     }
     
     document.getElementById('checkout-total-val').textContent = '€' + currentCheckoutTotal.toFixed(2);
@@ -605,7 +631,6 @@ function checkout() {
     
     document.getElementById('modal-overlay').classList.add('active');
     document.getElementById('checkout-modal').classList.add('active');
-    
     setTimeout(() => document.getElementById('checkout-given').focus(), 50);
 }
 
@@ -615,7 +640,7 @@ function calculateChange() {
     const changeEl = document.getElementById('checkout-change-val');
     
     if (change < 0) {
-        changeEl.textContent = 'Faltan €' + Math.abs(change).toFixed(2);
+        changeEl.textContent = `${t('alert_missing')} €` + Math.abs(change).toFixed(2);
         changeEl.classList.add('negative');
     } else {
         changeEl.textContent = '€' + change.toFixed(2);
@@ -628,33 +653,21 @@ function confirmPayment() {
     if (given < currentCheckoutTotal) {
         const changeContainer = document.getElementById('checkout-change-container');
         changeContainer.style.animation = 'none';
-        setTimeout(() => {
-            changeContainer.style.color = '#a32d2d';
-            setTimeout(() => changeContainer.style.color = '', 500);
-        }, 10);
+        setTimeout(() => { changeContainer.style.color = '#a32d2d'; setTimeout(() => changeContainer.style.color = '', 500); }, 10);
         return; 
     }
     
-    closeAllModals();
-    clearCart();
+    alert(`${t('checkout_success')} €${currentCheckoutTotal.toFixed(2)}`);
+    closeAllModals(); clearCart();
 }
 
-// Atajos de teclado globales (F2 y Avanzar Página para cobrar)
 window.addEventListener('keydown', function(e) {
     const modalsActive = document.querySelector('.modal.active');
-    
-    if (!modalsActive && (e.key === 'F2' || e.key === 'PageDown')) {
-        e.preventDefault();
-        checkout();
-    }
-    
-    if (modalsActive && e.key === 'Escape') {
-        closeAllModals();
-    }
+    if (!modalsActive && (e.key === 'F2' || e.key === 'PageDown')) { e.preventDefault(); checkout(); }
+    if (modalsActive && e.key === 'Escape') closeAllModals();
 });
 
-
-// --- LÓGICA DE INVENTARIO Y EDICIÓN ---
+// --- INVENTARIO LÓGICA ---
 let currentEditIndex = -1;
 
 function renderInventory() {
@@ -662,21 +675,21 @@ function renderInventory() {
   document.getElementById('inv-count').textContent = inventory.length;
 
   if (inventory.length === 0) {
-    container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #999;">No hay productos.</div>';
+    container.innerHTML = `<div style="text-align: center; padding: 2rem; color: #999;">${t('empty_cart')}</div>`;
     return;
   }
 
   let html = `<table><thead><tr>
-    <th>Código</th><th>Producto</th><th>Precio</th><th>Oferta</th><th>Acciones</th>
+    <th>${t('th_code')}</th><th>${t('th_product')}</th><th>${t('th_price')}</th><th>${t('th_promo')}</th><th>${t('th_actions')}</th>
   </tr></thead><tbody>`;
 
   inventory.forEach((p, i) => {
-    let promoHTML = p.promo ? `<div class="promo-badge">${p.promo.qty} por €${p.promo.price.toFixed(2)}</div>` : '-';
+    let promoHTML = p.promo ? `<div class="promo-badge">${p.promo.qty} ${t('lbl_by')} €${p.promo.price.toFixed(2)}</div>` : '-';
     let pTax = taxes[p.cat] || 0;
     
     html += `<tr>
       <td class="code">${p.code}</td>
-      <td>${p.name} <span class="tax-badge">(${pTax}% IVA)</span></td>
+      <td>${p.name} <span class="tax-badge">(${pTax}% ${t('lbl_iva')})</span></td>
       <td class="price-col">€${p.price.toFixed(2)}</td>
       <td>${promoHTML}</td>
       <td style="text-align:right; min-width:85px;">
@@ -693,7 +706,6 @@ function renderInventory() {
 function openEditModal(index) {
     currentEditIndex = index;
     const p = inventory[index];
-    
     document.getElementById('edit-code').value = p.code;
     document.getElementById('edit-name').value = p.name;
     document.getElementById('edit-price').value = p.price;
@@ -707,177 +719,112 @@ function openEditModal(index) {
 
 function saveEditProduct() {
     if (currentEditIndex === -1) return;
-
     const name = document.getElementById('edit-name').value.trim();
     const price = parseFloat(document.getElementById('edit-price').value);
     const cat = document.getElementById('edit-cat').value;
     const promoQty = parseInt(document.getElementById('edit-promo-qty').value);
     const promoPrice = parseFloat(document.getElementById('edit-promo-price').value);
 
-    if (!name || isNaN(price) || price < 0) {
-        alert("El nombre y precio son obligatorios y válidos.");
-        return;
-    }
+    if (!name || isNaN(price) || price < 0) { alert(t('alert_req')); return; }
 
-    // Actualizamos el objeto
     inventory[currentEditIndex].name = name;
     inventory[currentEditIndex].price = price;
     inventory[currentEditIndex].cat = cat;
     
-    // Oferta
     if (!isNaN(promoQty) && promoQty > 1 && !isNaN(promoPrice) && promoPrice > 0) {
         inventory[currentEditIndex].promo = { qty: promoQty, price: promoPrice };
-    } else {
-        delete inventory[currentEditIndex].promo;
-    }
+    } else delete inventory[currentEditIndex].promo;
 
-    saveInventory();
-    renderInventory();
-    renderSampleCodes();
-    closeAllModals();
+    saveInventory(); renderInventory(); renderSampleCodes(); closeAllModals();
 }
 
 function deleteProduct(index) {
-  if(confirm('¿Eliminar este producto del inventario?')) {
+  if(confirm(t('alert_del_prod'))) {
       inventory.splice(index, 1);
-      saveInventory(); 
-      renderInventory();
-      renderSampleCodes();
+      saveInventory(); renderInventory(); renderSampleCodes();
   }
 }
 
-// Importar y Exportar CSV
 function exportToCSV() {
     let csvContent = "data:text/csv;charset=utf-8,Codigo,Nombre,Precio,Categoria,PromoCantidad,PromoPrecio\n";
-    
     inventory.forEach(p => {
         const safeName = p.name.replace(/,/g, ' '); 
         const pQty = p.promo ? p.promo.qty : '';
         const pPrice = p.promo ? p.promo.price : '';
         csvContent += `${p.code},${safeName},${p.price},${p.cat},${pQty},${pPrice}\n`;
     });
-
-    const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    link.setAttribute("href", encodeURI(csvContent));
     link.setAttribute("download", "inventario_supermercado.csv");
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    document.body.appendChild(link); link.click(); document.body.removeChild(link);
 }
 
 function importFromCSV(event) {
     const file = event.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = function(e) {
-        const content = e.target.result;
-        const rows = content.split("\n").slice(1);
-        
+        const rows = e.target.result.split("\n").slice(1);
         let newInventory = [];
         rows.forEach(row => {
             if (!row.trim()) return;
             const cols = row.split(",");
             if (cols.length >= 3) {
-                let item = {
-                    code: cols[0].trim(),
-                    name: cols[1].trim(),
-                    price: parseFloat(cols[2]),
-                    cat: cols[3] ? cols[3].trim() : 'other'
-                };
-                
+                let item = { code: cols[0].trim(), name: cols[1].trim(), price: parseFloat(cols[2]), cat: cols[3] ? cols[3].trim() : 'other' };
                 if (cols[4] && cols[5]) {
-                    const promoQty = parseInt(cols[4]);
-                    const promoPrice = parseFloat(cols[5]);
-                    if (!isNaN(promoQty) && !isNaN(promoPrice)) {
-                        item.promo = { qty: promoQty, price: promoPrice };
-                    }
+                    const pq = parseInt(cols[4]); const pp = parseFloat(cols[5]);
+                    if (!isNaN(pq) && !isNaN(pp)) item.promo = { qty: pq, price: pp };
                 }
                 newInventory.push(item);
             }
         });
-
-        if (confirm(`¿Cargar ${newInventory.length} productos? Esto reemplazará tu inventario actual.`)) {
-            inventory = newInventory;
-            saveInventory();
-            renderInventory();
-            alert("Inventario cargado con éxito");
-            renderSampleCodes();
-            event.target.value = '';
+        if (confirm(`Cargar ${newInventory.length} productos?`)) {
+            inventory = newInventory; saveInventory(); applyLanguage(); renderSampleCodes(); event.target.value = '';
         }
     };
     reader.readAsText(file);
 }
 
-// --- AGREGAR PRODUCTO ---
 function addProduct() {
   const code  = document.getElementById('new-code').value.trim();
   const name  = document.getElementById('new-name').value.trim();
   const price = parseFloat(document.getElementById('new-price').value);
   const cat   = document.getElementById('new-cat').value;
-  
   const promoQty = parseInt(document.getElementById('new-promo-qty').value);
   const promoPrice = parseFloat(document.getElementById('new-promo-price').value);
   const msg   = document.getElementById('add-msg');
 
-  if (!code || !name || isNaN(price) || price < 0) {
-    msg.innerHTML = '<span style="color:#a32d2d;">Rellena el código, nombre y precio.</span>';
-    return;
-  }
-  if (inventory.find(p => p.code === code)) {
-    msg.innerHTML = '<span style="color:#a32d2d;">Ese código ya existe.</span>';
-    return;
-  }
+  if (!code || !name || isNaN(price) || price < 0) { msg.innerHTML = `<span style="color:#a32d2d;">${t('alert_req')}</span>`; return; }
+  if (inventory.find(p => p.code === code)) { msg.innerHTML = `<span style="color:#a32d2d;">${t('alert_exist')}</span>`; return; }
 
   let newProduct = { code, name, price, cat };
-  
-  if (!isNaN(promoQty) && promoQty > 1 && !isNaN(promoPrice) && promoPrice > 0) {
-      newProduct.promo = { qty: promoQty, price: promoPrice };
-  }
+  if (!isNaN(promoQty) && promoQty > 1 && !isNaN(promoPrice) && promoPrice > 0) newProduct.promo = { qty: promoQty, price: promoPrice };
 
-  inventory.push(newProduct);
-  saveInventory(); 
-
-  msg.innerHTML = '<span style="color:#3B6D11;">¡Producto agregado!</span>';
+  inventory.push(newProduct); saveInventory(); 
+  msg.innerHTML = `<span style="color:#3B6D11;">${t('msg_added')}</span>`;
   
-  document.getElementById('new-code').value  = '';
-  document.getElementById('new-name').value  = '';
-  document.getElementById('new-price').value = '';
-  document.getElementById('new-promo-qty').value = '';
-  document.getElementById('new-promo-price').value = '';
-  
-  setTimeout(() => msg.innerHTML = '', 3500);
-  renderSampleCodes();
+  ['new-code', 'new-name', 'new-price', 'new-promo-qty', 'new-promo-price'].forEach(id => document.getElementById(id).value = '');
+  setTimeout(() => msg.innerHTML = '', 3500); renderSampleCodes(); applyLanguage();
 }
 
 function renderSampleCodes() {
   const container = document.getElementById('sample-codes-container');
-  if (!container) return;
-  container.innerHTML = '';
+  if (!container) return; container.innerHTML = '';
   inventory.slice(0, 6).forEach(p => {
     const btn = document.createElement('button');
     btn.textContent = p.name + (p.promo ? ' 🎁' : '');
     btn.title = `Código: ${p.code}`;
-    btn.onclick = () => {
-      document.getElementById('barcode-input').value = p.code;
-      searchBarcode();
-    };
+    btn.onclick = () => { document.getElementById('barcode-input').value = p.code; searchBarcode(); };
     container.appendChild(btn);
   });
 }
 
-// Iniciar app
-renderConfig();
+// Inicialización de Idioma y Componentes
+applyLanguage();
 renderSampleCodes();
-updateTicketUI();
 
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js')
-      .then(reg => console.log('PWA lista y registrada'))
-      .catch(err => console.log('Error al registrar PWA', err));
-  });
+  window.addEventListener('load', () => { navigator.serviceWorker.register('sw.js').catch(()=>{}); });
 }
 </script>
 </body>

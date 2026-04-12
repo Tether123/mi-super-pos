@@ -208,13 +208,8 @@
       </div>
       <div class="form-field">
         <label data-i18n="add_cat">Categoría</label>
-        <!-- LAS CATEGORÍAS NO SE TRADUCEN SEGÚN PETICIÓN -->
         <select id="new-cat">
-          <option value="food">Alimento</option>
-          <option value="drink">Bebida</option>
-          <option value="snack">Snack</option>
-          <option value="clean">Limpieza</option>
-          <option value="other">Otro</option>
+          <!-- Se llena dinámicamente según las categorías guardadas -->
         </select>
       </div>
     </div>
@@ -237,21 +232,31 @@
     <div id="add-msg" style="text-align: center; margin-top: 10px; font-size: 14px;"></div>
   </div>
 
-  <!-- CONFIGURACIÓN DE IVA -->
+  <!-- CONFIGURACIÓN DE IVA Y CATEGORÍAS -->
   <div class="panel" id="panel-config">
     <p class="section-title" data-i18n="config_title">Impuestos por Categoría (% IVA)</p>
     <p style="font-size: 13px; color: #666; margin-bottom: 15px;" data-i18n="config_desc">Define el porcentaje de IVA aplicado a cada tipo de producto. Los precios de tu inventario ya incluyen el IVA, este panel permite desglosarlo correctamente en el ticket.</p>
     
     <div class="form-grid" id="tax-config-grid">
-      <!-- Los inputs de IVA se inyectan aquí -->
+      <!-- Los inputs de IVA se inyectan aquí dinámicamente -->
     </div>
     
-    <button class="primary" onclick="saveTaxConfig()" data-i18n="btn_save_tax">Guardar Impuestos</button>
-    <div id="config-msg" style="text-align: left; display: inline-block; margin-left: 10px; font-size: 14px;"></div>
+    <button class="primary" onclick="saveTaxConfig()" data-i18n="btn_save_tax" style="margin-bottom: 2rem;">Guardar Impuestos</button>
+    <span id="config-msg" style="margin-left: 10px; font-size: 14px;"></span>
+
+    <hr style="border: none; border-top: 1px solid rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
+    
+    <!-- NUEVO: AÑADIR CATEGORÍA -->
+    <p class="section-title" data-i18n="config_new_cat">Añadir nueva categoría</p>
+    <div class="search-row" style="max-width: 400px;">
+      <input type="text" id="new-category-name" data-i18n="placeholder_new_cat" placeholder="Nombre de la categoría..." />
+      <button class="primary" onclick="addNewCategory()" data-i18n="btn_add_cat">Añadir</button>
+    </div>
+    <div id="cat-msg" style="font-size: 14px; margin-top: 8px;"></div>
   </div>
 </div>
 
-<!-- ================= MODALES NUEVOS ================= -->
+<!-- ================= MODALES ================= -->
 <div id="modal-overlay" class="modal-overlay" onclick="closeAllModals()"></div>
 
 <!-- MODAL VENTANILLA DE COBRO -->
@@ -296,11 +301,7 @@
     <div class="form-field">
       <label data-i18n="add_cat">Categoría</label>
       <select id="edit-cat">
-        <option value="food">Alimento</option>
-        <option value="drink">Bebida</option>
-        <option value="snack">Snack</option>
-        <option value="clean">Limpieza</option>
-        <option value="other">Otro</option>
+        <!-- Se llena dinámicamente -->
       </select>
     </div>
   </div>
@@ -344,12 +345,13 @@ const dict = {
     btn_save_tax: "Guardar Impuestos", checkout_title: "Ventanilla de Cobro", checkout_total: "Total a pagar: ",
     checkout_given: "Efectivo recibido (€)", checkout_change: "Cambio: ", btn_cancel: "Cancelar", btn_confirm: "Confirmar (Enter)",
     edit_title: "Editar Producto", btn_save_edit: "Guardar Cambios",
+    config_new_cat: "Añadir nueva categoría", placeholder_new_cat: "Nombre de la categoría...", btn_add_cat: "Añadir",
     lang_btn: "🇨🇳 中文",
     manual_item: "Artículo manual", not_found: "Código no encontrado", error: "Error",
     alert_empty: "El carrito está vacío.", alert_missing: "Faltan",
     alert_del_prod: "¿Eliminar este producto del inventario?", alert_restore: "¿Estás seguro de querer borrar tus productos y volver a los de fábrica?",
     alert_req: "El nombre y precio son obligatorios y válidos.", alert_exist: "Ese código ya existe.",
-    msg_added: "¡Producto agregado!", msg_tax_saved: "¡IVA guardado con éxito!", checkout_success: "¡Cobro realizado con éxito!\nTotal cobrado: ",
+    msg_added: "¡Producto agregado!", msg_tax_saved: "¡IVA guardado con éxito!", msg_cat_added: "Categoría añadida", checkout_success: "¡Cobro realizado con éxito!\nTotal cobrado: ",
     lbl_iva: "IVA", lbl_incl: "incl.", lbl_savings: "Ahorras", lbl_offer: "Oferta", lbl_by: "por",
     th_code: "Código", th_product: "Producto", th_price: "Precio", th_promo: "Oferta", th_actions: ""
   },
@@ -368,12 +370,13 @@ const dict = {
     btn_save_tax: "保存税率", checkout_title: "结账窗口", checkout_total: "应付总额：",
     checkout_given: "实收现金 (€)", checkout_change: "找零：", btn_cancel: "取消", btn_confirm: "确认 (Enter)",
     edit_title: "编辑商品", btn_save_edit: "保存更改",
+    config_new_cat: "添加新分类", placeholder_new_cat: "分类名称...", btn_add_cat: "添加",
     lang_btn: "🇪🇸 Español",
     manual_item: "手动输入商品", not_found: "未找到条形码", error: "错误",
     alert_empty: "购物车为空。", alert_missing: "还差",
     alert_del_prod: "确定要从库存中删除此商品吗？", alert_restore: "您确定要删除所有商品并恢复出厂设置吗？",
     alert_req: "名称和价格是必填的有效项。", alert_exist: "该条形码已存在。",
-    msg_added: "商品已添加！", msg_tax_saved: "增值税保存成功！", checkout_success: "结账成功！\n总收取的金额：",
+    msg_added: "商品已添加！", msg_tax_saved: "增值税保存成功！", msg_cat_added: "分类已添加", checkout_success: "结账成功！\n总收取的金额：",
     lbl_iva: "增值税", lbl_incl: "包含", lbl_savings: "节省", lbl_offer: "优惠", lbl_by: "特价",
     th_code: "条形码", th_product: "商品", th_price: "价格", th_promo: "优惠", th_actions: ""
   }
@@ -409,8 +412,8 @@ function toggleLanguage() {
     applyLanguage();
 }
 
-// --- DICCIONARIO DE CATEGORÍAS (INTOCABLE, SIEMPRE EN ESPAÑOL) ---
-const CAT_NAMES = {
+// --- SISTEMA DINÁMICO DE CATEGORÍAS (NUNCA SE TRADUCEN) ---
+const DEFAULT_CATEGORIES = {
   food: 'Alimento',
   drink: 'Bebida',
   snack: 'Snack',
@@ -418,15 +421,49 @@ const CAT_NAMES = {
   other: 'Otro'
 };
 
-// --- IMPUESTOS (IVA) ---
-const DEFAULT_TAXES = {
-  food: 10,   // Ejemplo: IVA reducido
-  drink: 21,  // Ejemplo: IVA general
-  snack: 21,
-  clean: 21,
-  other: 21
-};
+let savedCategories = localStorage.getItem('mi_supermercado_categorias');
+let categories = savedCategories ? JSON.parse(savedCategories) : JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
 
+function saveCategories() {
+    localStorage.setItem('mi_supermercado_categorias', JSON.stringify(categories));
+}
+
+function renderCategorySelects() {
+    let optionsHTML = '';
+    for (let key in categories) {
+        optionsHTML += `<option value="${key}">${categories[key]}</option>`;
+    }
+    document.getElementById('new-cat').innerHTML = optionsHTML;
+    document.getElementById('edit-cat').innerHTML = optionsHTML;
+}
+
+function addNewCategory() {
+    const input = document.getElementById('new-category-name');
+    const catName = input.value.trim();
+    const msg = document.getElementById('cat-msg');
+    
+    if (!catName) return;
+    
+    // Crear una key única para la categoría
+    const catKey = 'cat_' + Date.now(); 
+    
+    categories[catKey] = catName;
+    taxes[catKey] = 21; // IVA por defecto
+    
+    saveCategories();
+    saveTaxes();
+    
+    renderConfig();
+    renderCategorySelects();
+    renderInventory(); // Actualiza posibles nombres si hubo cambios
+    
+    msg.innerHTML = `<span style="color:#3B6D11;">${t('msg_cat_added')}</span>`;
+    input.value = '';
+    setTimeout(() => msg.innerHTML = '', 3000);
+}
+
+// --- IMPUESTOS (IVA) ---
+const DEFAULT_TAXES = { food: 10, drink: 21, snack: 21, clean: 21, other: 21 };
 let savedTaxes = localStorage.getItem('mi_supermercado_taxes');
 let taxes = savedTaxes ? JSON.parse(savedTaxes) : JSON.parse(JSON.stringify(DEFAULT_TAXES));
 
@@ -437,10 +474,11 @@ function saveTaxes() {
 function renderConfig() {
     const grid = document.getElementById('tax-config-grid');
     let html = '';
-    for (let key in taxes) {
+    for (let key in categories) {
+        if (taxes[key] === undefined) taxes[key] = 21; // Asegurar IVA
         html += `
           <div class="form-field">
-            <label>${CAT_NAMES[key] || key} (%)</label>
+            <label>${categories[key]} (%)</label>
             <input type="number" id="tax-input-${key}" value="${taxes[key]}" min="0" max="100" step="0.1">
           </div>
         `;
@@ -449,7 +487,7 @@ function renderConfig() {
 }
 
 function saveTaxConfig() {
-    for (let key in taxes) {
+    for (let key in categories) {
         const inputVal = parseFloat(document.getElementById(`tax-input-${key}`).value);
         if (!isNaN(inputVal) && inputVal >= 0) {
             taxes[key] = inputVal;
@@ -485,8 +523,11 @@ function restoreDefaults() {
     if(confirm(t('alert_restore'))) {
         inventory = JSON.parse(JSON.stringify(DEFAULT_INVENTORY));
         taxes = JSON.parse(JSON.stringify(DEFAULT_TAXES));
+        categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
         saveInventory();
         saveTaxes();
+        saveCategories();
+        renderCategorySelects();
         applyLanguage();
         renderSampleCodes();
     }
@@ -735,10 +776,11 @@ function renderInventory() {
   inventory.forEach((p, i) => {
     let promoHTML = p.promo ? `<div class="promo-badge">${p.promo.qty} ${t('lbl_by')} €${p.promo.price.toFixed(2)}</div>` : '-';
     let pTax = taxes[p.cat] || 0;
+    let catDisplayName = categories[p.cat] || p.cat;
     
     html += `<tr>
       <td class="code">${p.code}</td>
-      <td>${p.name} <span class="tax-badge">(${pTax}% ${t('lbl_iva')})</span></td>
+      <td>${p.name}<br><span class="tax-badge" style="margin-left:0;">${catDisplayName} (${pTax}% ${t('lbl_iva')})</span></td>
       <td class="price-col">€${p.price.toFixed(2)}</td>
       <td>${promoHTML}</td>
       <td style="text-align:right; min-width:85px;">
@@ -824,7 +866,7 @@ function exportToCSV() {
     document.body.removeChild(link);
 }
 
-// 2. Importar de CSV (LÓGICA ORIGINAL INTACTA)
+// 2. Importar de CSV (LÓGICA ACTUALIZADA PARA ACEPTAR NUEVAS CATEGORÍAS)
 function importFromCSV(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -835,15 +877,26 @@ function importFromCSV(event) {
         const rows = content.split("\n").slice(1);
         
         let newInventory = [];
+        let CategoriesChanged = false;
+
         rows.forEach(row => {
             if (!row.trim()) return;
             const cols = row.split(",");
             if (cols.length >= 3) {
+                let importedCat = cols[3] ? cols[3].trim() : 'other';
+                
+                // Si la categoría del CSV no existe en nuestras keys, la agregamos
+                if (!categories[importedCat]) {
+                    categories[importedCat] = importedCat;
+                    taxes[importedCat] = 21; // IVA por defecto
+                    CategoriesChanged = true;
+                }
+
                 let item = {
                     code: cols[0].trim(),
                     name: cols[1].trim(),
                     price: parseFloat(cols[2]),
-                    cat: cols[3] ? cols[3].trim() : 'other'
+                    cat: importedCat
                 };
                 
                 if (cols[4] && cols[5]) {
@@ -860,6 +913,11 @@ function importFromCSV(event) {
         if (confirm(`¿Cargar ${newInventory.length} productos? Esto reemplazará tu inventario actual.`)) {
             inventory = newInventory;
             saveInventory();
+            if (CategoriesChanged) {
+                saveCategories();
+                saveTaxes();
+                renderCategorySelects();
+            }
             renderInventory();
             renderSampleCodes();
             event.target.value = '';
@@ -926,6 +984,7 @@ function renderSampleCodes() {
 }
 
 // Iniciar app
+renderCategorySelects();
 applyLanguage();
 
 if ('serviceWorker' in navigator) {

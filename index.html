@@ -178,7 +178,7 @@
       <button class="small-text" onclick="restoreDefaults()" data-i18n="inv_restore">Restaurar datos de fábrica</button>
     </div>
 
-    <!-- BOTONES EXACTOS DEL ORIGINAL (Solo se traduce el texto interno, no la lógica) -->
+    <!-- BOTONES CSV -->
     <div style="margin-top: 10px; margin-bottom: 15px; display: flex; gap: 10px;">
       <button onclick="exportToCSV()" data-i18n="inv_download">Descargar copia (CSV)</button>
       <label class="button" style="cursor:pointer; padding: 10px; border: 1px solid #ccc; border-radius: 8px;">
@@ -187,6 +187,11 @@
       </label>
     </div>
     
+    <!-- NUEVO: BUSCADOR DE INVENTARIO -->
+    <div class="search-row" style="margin-bottom: 15px;">
+      <input type="text" id="inventory-search" data-i18n="placeholder_search" placeholder="Buscar por nombre o código..." oninput="filterInventory()" />
+    </div>
+
     <div id="inventory-table-container"></div>
   </div>
 
@@ -209,7 +214,7 @@
       <div class="form-field">
         <label data-i18n="add_cat">Categoría</label>
         <select id="new-cat">
-          <!-- Se llena dinámicamente según las categorías guardadas -->
+          <!-- Se llena dinámicamente -->
         </select>
       </div>
     </div>
@@ -246,7 +251,6 @@
 
     <hr style="border: none; border-top: 1px solid rgba(0,0,0,0.1); margin-bottom: 1.5rem;">
     
-    <!-- NUEVO: AÑADIR CATEGORÍA -->
     <p class="section-title" data-i18n="config_new_cat">Añadir nueva categoría</p>
     <div class="search-row" style="max-width: 400px;">
       <input type="text" id="new-category-name" data-i18n="placeholder_new_cat" placeholder="Nombre de la categoría..." />
@@ -346,6 +350,7 @@ const dict = {
     checkout_given: "Efectivo recibido (€)", checkout_change: "Cambio: ", btn_cancel: "Cancelar", btn_confirm: "Confirmar (Enter)",
     edit_title: "Editar Producto", btn_save_edit: "Guardar Cambios",
     config_new_cat: "Añadir nueva categoría", placeholder_new_cat: "Nombre de la categoría...", btn_add_cat: "Añadir",
+    placeholder_search: "Buscar por nombre o código...", no_results: "No se encontraron productos.",
     lang_btn: "🇨🇳 中文",
     manual_item: "Artículo manual", not_found: "Código no encontrado", error: "Error",
     alert_empty: "El carrito está vacío.", alert_missing: "Faltan",
@@ -371,6 +376,7 @@ const dict = {
     checkout_given: "实收现金 (€)", checkout_change: "找零：", btn_cancel: "取消", btn_confirm: "确认 (Enter)",
     edit_title: "编辑商品", btn_save_edit: "保存更改",
     config_new_cat: "添加新分类", placeholder_new_cat: "分类名称...", btn_add_cat: "添加",
+    placeholder_search: "按名称或条形码搜索...", no_results: "未找到商品。",
     lang_btn: "🇪🇸 Español",
     manual_item: "手动输入商品", not_found: "未找到条形码", error: "错误",
     alert_empty: "购物车为空。", alert_missing: "还差",
@@ -398,7 +404,7 @@ function applyLanguage() {
     document.getElementById('lang-toggle-btn').innerHTML = dict[currentLang].lang_btn;
     
     renderConfig();
-    renderInventory();
+    filterInventory(); // Renderiza el inventario aplicando el idioma
     updateTicketUI();
     
     if(Object.keys(cart).length === 0) {
@@ -444,18 +450,16 @@ function addNewCategory() {
     
     if (!catName) return;
     
-    // Crear una key única para la categoría
     const catKey = 'cat_' + Date.now(); 
-    
     categories[catKey] = catName;
-    taxes[catKey] = 21; // IVA por defecto
+    taxes[catKey] = 21; 
     
     saveCategories();
     saveTaxes();
     
     renderConfig();
     renderCategorySelects();
-    renderInventory(); // Actualiza posibles nombres si hubo cambios
+    filterInventory(); 
     
     msg.innerHTML = `<span style="color:#3B6D11;">${t('msg_cat_added')}</span>`;
     input.value = '';
@@ -475,7 +479,7 @@ function renderConfig() {
     const grid = document.getElementById('tax-config-grid');
     let html = '';
     for (let key in categories) {
-        if (taxes[key] === undefined) taxes[key] = 21; // Asegurar IVA
+        if (taxes[key] === undefined) taxes[key] = 21; 
         html += `
           <div class="form-field">
             <label>${categories[key]} (%)</label>
@@ -494,15 +498,15 @@ function saveTaxConfig() {
         }
     }
     saveTaxes();
-    updateTicketUI(); // Actualiza los cálculos si hay un ticket en curso
-    renderInventory(); // Actualiza el IVA mostrado en inventario
+    updateTicketUI(); 
+    filterInventory(); 
     
     const msg = document.getElementById('config-msg');
     msg.innerHTML = `<span style="color:#3B6D11;">${t('msg_tax_saved')}</span>`;
     setTimeout(() => msg.innerHTML = '', 3000);
 }
 
-// --- DATOS INICIALES DEL INVENTARIO Y GUARDADO EXACTO ---
+// --- DATOS INICIALES DEL INVENTARIO Y GUARDADO ---
 const DEFAULT_INVENTORY = [
   { code: '8410188070031', name: 'Leche entera 1L',          price: 0.99, cat: 'food', promo: { qty: 6, price: 5.00 } },
   { code: '8410188030035', name: 'Pan de molde 500g',        price: 1.35, cat: 'food' },
@@ -535,7 +539,7 @@ function restoreDefaults() {
 
 // Carrito
 let cart = {}; 
-let currentCheckoutTotal = 0; // Para el modal
+let currentCheckoutTotal = 0; 
 
 // --- NAVEGACIÓN ---
 function showTab(name) {
@@ -544,7 +548,7 @@ function showTab(name) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   document.getElementById('panel-' + name).classList.add('active');
   
-  if (name === 'inventory') renderInventory();
+  if (name === 'inventory') filterInventory();
   if (name === 'config') renderConfig();
   if (name === 'scanner') {
       renderSampleCodes();
@@ -561,7 +565,6 @@ function searchBarcode() {
   if (!code) return;
   disp.className = 'price-screen';
 
-  // Cobro Manual
   if (code.includes('.') && !isNaN(parseFloat(code))) {
       const manualPrice = parseFloat(code);
       if (manualPrice >= 0) {
@@ -586,7 +589,7 @@ function searchBarcode() {
 
   if (product) {
     const taxRate = taxes[product.cat] || 0;
-    document.getElementById('display-name').textContent = product.name; // NO TRADUCIDO
+    document.getElementById('display-name').textContent = product.name; 
     document.getElementById('display-price').innerHTML = '<span class="price-currency">€</span>' + product.price.toFixed(2);
     document.getElementById('display-tax').textContent = `(${t('lbl_iva')} ${taxRate}% ${t('lbl_incl')})`;
     disp.classList.add('success');
@@ -697,7 +700,7 @@ function clearCart() {
     document.getElementById('barcode-input').focus();
 }
 
-// --- MODAL DE COBRO (NUEVO) ---
+// --- MODAL DE COBRO ---
 function closeAllModals() {
     document.querySelectorAll('.modal-overlay, .modal').forEach(el => el.classList.remove('active'));
     document.getElementById('barcode-input').focus();
@@ -742,7 +745,6 @@ function confirmPayment() {
         }, 10);
         return; 
     }
-    
     closeAllModals();
     clearCart();
 }
@@ -757,15 +759,25 @@ window.addEventListener('keydown', function(e) {
     if (modalsActive && e.key === 'Escape') closeAllModals();
 });
 
-// --- INVENTARIO (CON EDICIÓN AÑADIDA) ---
-let currentEditIndex = -1;
+// --- INVENTARIO: BUSCADOR Y EDICIÓN ---
+let currentEditCode = null; // AHORA BUSCAMOS POR CÓDIGO, NO POR ÍNDICE
 
-function renderInventory() {
+function filterInventory() {
+    const searchTerm = document.getElementById('inventory-search').value.toLowerCase();
+    renderInventory(searchTerm);
+}
+
+function renderInventory(filterText = '') {
   const container = document.getElementById('inventory-table-container');
   document.getElementById('inv-count').textContent = inventory.length;
 
-  if (inventory.length === 0) {
-    container.innerHTML = `<div style="text-align: center; padding: 2rem; color: #999;">${t('empty_cart')}</div>`;
+  const filteredItems = inventory.filter(p => 
+      p.name.toLowerCase().includes(filterText) || 
+      p.code.toLowerCase().includes(filterText)
+  );
+
+  if (filteredItems.length === 0) {
+    container.innerHTML = `<div style="text-align: center; padding: 2rem; color: #999;">${inventory.length === 0 ? t('empty_cart') : t('no_results')}</div>`;
     return;
   }
 
@@ -773,7 +785,7 @@ function renderInventory() {
     <th>${t('th_code')}</th><th>${t('th_product')}</th><th>${t('th_price')}</th><th>${t('th_promo')}</th><th>${t('th_actions')}</th>
   </tr></thead><tbody>`;
 
-  inventory.forEach((p, i) => {
+  filteredItems.forEach(p => {
     let promoHTML = p.promo ? `<div class="promo-badge">${p.promo.qty} ${t('lbl_by')} €${p.promo.price.toFixed(2)}</div>` : '-';
     let pTax = taxes[p.cat] || 0;
     let catDisplayName = categories[p.cat] || p.cat;
@@ -784,8 +796,8 @@ function renderInventory() {
       <td class="price-col">€${p.price.toFixed(2)}</td>
       <td>${promoHTML}</td>
       <td style="text-align:right; min-width:85px;">
-        <button class="primary" style="padding: 4px 8px; margin-right: 4px;" onclick="openEditModal(${i})" title="Editar">✎</button>
-        <button class="danger" style="padding: 4px 8px;" onclick="deleteProduct(${i})">✕</button>
+        <button class="primary" style="padding: 4px 8px; margin-right: 4px;" onclick="openEditModal('${p.code}')" title="Editar">✎</button>
+        <button class="danger" style="padding: 4px 8px;" onclick="deleteProduct('${p.code}')">✕</button>
       </td>
     </tr>`;
   });
@@ -794,9 +806,11 @@ function renderInventory() {
   container.innerHTML = html;
 }
 
-function openEditModal(index) {
-    currentEditIndex = index;
-    const p = inventory[index];
+function openEditModal(code) {
+    currentEditCode = code;
+    const p = inventory.find(x => x.code === code);
+    if (!p) return;
+    
     document.getElementById('edit-code').value = p.code;
     document.getElementById('edit-name').value = p.name;
     document.getElementById('edit-price').value = p.price;
@@ -809,7 +823,9 @@ function openEditModal(index) {
 }
 
 function saveEditProduct() {
-    if (currentEditIndex === -1) return;
+    if (!currentEditCode) return;
+    const index = inventory.findIndex(x => x.code === currentEditCode);
+    if (index === -1) return;
 
     const name = document.getElementById('edit-name').value.trim();
     const price = parseFloat(document.getElementById('edit-price').value);
@@ -821,32 +837,35 @@ function saveEditProduct() {
         alert(t('alert_req')); return;
     }
 
-    inventory[currentEditIndex].name = name;
-    inventory[currentEditIndex].price = price;
-    inventory[currentEditIndex].cat = cat;
+    inventory[index].name = name;
+    inventory[index].price = price;
+    inventory[index].cat = cat;
     
     if (!isNaN(promoQty) && promoQty > 1 && !isNaN(promoPrice) && promoPrice > 0) {
-        inventory[currentEditIndex].promo = { qty: promoQty, price: promoPrice };
+        inventory[index].promo = { qty: promoQty, price: promoPrice };
     } else {
-        delete inventory[currentEditIndex].promo;
+        delete inventory[index].promo;
     }
 
     saveInventory();
-    renderInventory();
+    filterInventory(); // Refresca usando el texto que haya en el buscador
     renderSampleCodes();
     closeAllModals();
 }
 
-function deleteProduct(index) {
+function deleteProduct(code) {
   if(confirm(t('alert_del_prod'))) {
-      inventory.splice(index, 1);
-      saveInventory(); 
-      renderInventory();
-      renderSampleCodes();
+      const index = inventory.findIndex(x => x.code === code);
+      if(index !== -1) {
+          inventory.splice(index, 1);
+          saveInventory(); 
+          filterInventory();
+          renderSampleCodes();
+      }
   }
 }
 
-// 1. Exportar a CSV (LÓGICA ORIGINAL INTACTA)
+// 1. Exportar a CSV 
 function exportToCSV() {
     let csvContent = "data:text/csv;charset=utf-8,Codigo,Nombre,Precio,Categoria,PromoCantidad,PromoPrecio\n";
     
@@ -866,7 +885,7 @@ function exportToCSV() {
     document.body.removeChild(link);
 }
 
-// 2. Importar de CSV (LÓGICA ACTUALIZADA PARA ACEPTAR NUEVAS CATEGORÍAS)
+// 2. Importar de CSV
 function importFromCSV(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -885,10 +904,9 @@ function importFromCSV(event) {
             if (cols.length >= 3) {
                 let importedCat = cols[3] ? cols[3].trim() : 'other';
                 
-                // Si la categoría del CSV no existe en nuestras keys, la agregamos
                 if (!categories[importedCat]) {
                     categories[importedCat] = importedCat;
-                    taxes[importedCat] = 21; // IVA por defecto
+                    taxes[importedCat] = 21; 
                     CategoriesChanged = true;
                 }
 
@@ -918,7 +936,7 @@ function importFromCSV(event) {
                 saveTaxes();
                 renderCategorySelects();
             }
-            renderInventory();
+            filterInventory();
             renderSampleCodes();
             event.target.value = '';
         }
